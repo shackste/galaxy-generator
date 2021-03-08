@@ -1,0 +1,6 @@
+- create common usage account at https://wandb.ai/
+- link results to wandb.ai
+- search hyperparameters
+- write tests to verify goodness by eye
+- find good measure to verify goodness of generated galaxies
+- include hierarchical labels
