@@ -1,10 +1,10 @@
-""" folder structure on google drive mounted to '/drive' via
-
-from google.colab import drive
-drive.mount("/drive")
+""" folder structure on google drive mounted to '/drive'
 """
 
 import os
+
+from google.colab import drive
+drive.mount("/drive")
 
 root = "/drive/MyDrive/FHNW/galaxy_generator/"
 
