@@ -8,7 +8,7 @@ from IPython.display import display
 from torchviz import make_dot
 
 from file_system import folder_results
-from parameters import image_dim, input_size
+from parameter import image_dim, input_size
 
 #########################
 ## investigate network ##
