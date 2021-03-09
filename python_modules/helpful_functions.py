@@ -10,7 +10,7 @@ from torchviz import make_dot
 from file_system import folder_results
 
 
-def summarize(network, input_size=input_size, graph=False, labels=False):
+def summarize(network, input_size=(3,64,64), graph=False, labels=False):
     net = network()
     net = net.cuda()
     print("input size", input_size)
