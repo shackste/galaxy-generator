@@ -10,7 +10,8 @@ from torch.nn import Sequential, \
 from neuralnetwork import NeuralNetwork
 from parameter import colors_dim, latent_dim, labels_dim, \
                       optimizer, learning_rate, betas, \
-                      momentum, negative_slope
+                      momentum, negative_slope, \
+                      alpha
 
 
 
