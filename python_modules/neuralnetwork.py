@@ -16,3 +16,7 @@ class NeuralNetwork(Module):
     def load(self):
         self.load_state_dict(load(self.parameter_file))
         self.eval()
+
+    @static
+    def same_padding(*, kernel_size=1, stride=1):
+        return (kernel_size - stride)//2 + 1
