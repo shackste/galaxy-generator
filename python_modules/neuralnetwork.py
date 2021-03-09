@@ -11,12 +11,18 @@ class NeuralNetwork(Module):
         # self.cuda() ## all NN shall run on cuda ### doesnt seem to work
     
     def save(self):
+        """ save learned parameters to parameter_file """
         torch.save(self.state_dict(), self.parameter_file)
 
     def load(self):
+        """ load learned parameters from parameter_file """
         self.load_state_dict(load(self.parameter_file))
         self.eval()
 
     @staticmethod
-    def same_padding(*, kernel_size=1, stride=1):
-        return (kernel_size - stride)//2 + 1
+    def same_padding(kernel_size=1):
+        """ return padding required to mimic 'same' padding in tensorflow """
+        return (kernel_size-1) // 2
+
+    def set_optimizer(self, optimizer, **kwargs):
+        self.optimizer = optimizer(self.parameters(), **kwargs)

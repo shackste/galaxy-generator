@@ -8,11 +8,11 @@ class Reshape(Module):
 
         USAGE
         -----
-        torch.nn.Sequential(
-            ...
-            Reshape(*shape)
-            ...
-        )
+        >>> torch.nn.Sequential(
+        >>>    ...
+        >>>    Reshape(*shape)
+        >>>    ...
+        >>> )
     """
     def __init__(self, *shape):
         super(Reshape, self).__init__()
@@ -26,11 +26,11 @@ class PrintShape(Module):
 
         USAGE
         -----
-        torch.nn.Sequential(
-            ...
-            Reshape(*shape)
-            ...
-        )
+        >>> torch.nn.Sequential(
+        >>>     ...
+        >>>     Reshape(*shape)
+        >>>     ...
+        >>> )
     """
     def __init__(self):
         super(PrintShape, self).__init__()
