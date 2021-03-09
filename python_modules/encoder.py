@@ -3,7 +3,7 @@
 from torch import cat
 from torch.nn import Sequential, \
                      Conv2d, Linear, \
-                     ReLU, LeakyReLU, Sigmoid, Softmax, Softplus \
+                     ReLU, LeakyReLU, Sigmoid, Softmax, Softplus, \
                      BatchNorm1d, BatchNorm2d, Flatten
 
 
