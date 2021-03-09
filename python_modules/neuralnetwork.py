@@ -1,5 +1,5 @@
 from torch import load
-from torch.nn.import Module
+from torch.nn import Module
 
 from file_system import folder_results
 
