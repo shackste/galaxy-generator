@@ -14,8 +14,7 @@ file_galaxy_labels = root + "training_solutions_rev1.csv"
 
 folder_results = root + "results/"
 
-print()
-print("!!!!!!!!!!\n")
+print("\n!!!!!!!!!!\n")
 print(
     f"{file_galaxy_images.split('/')[-1]}" +
     f" and {file_galaxy_labels.split('/')[-1]}" +
@@ -23,7 +22,6 @@ print(
     f"{'/'.join(root.split('/')[3:])}"
 )
 print("the results will be placed there, too.\n")
-print()
 
 drive.mount("/drive")
 
