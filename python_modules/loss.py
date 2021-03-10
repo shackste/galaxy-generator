@@ -4,8 +4,7 @@
 from torch import sum
 from torch.nn import MSELoss, BCELoss
 
-from parameter import alpha, beta, delta, gamma, zeta, \
-                      labels_dim
+from parameter import parameter, labels_dim
 
 mse = MSELoss()
 bce = BCELoss()
@@ -37,7 +36,7 @@ def loss_kl(latent):
 def loss_VAE(image, generated_image, latent_mean, latent_std):
     """ total loss of VAE """
     loss = loss_reconstruction(image, generated_image)
-    if alpha:
+    if parameter.alpha:
         loss += loss_kl(latent_mean, latent_std)
     return mean(loss)
 
@@ -66,9 +65,9 @@ def loss_generator(target, prediction, image, generated_image, latent):
         labels_dim+1:-1 ; metric
     """
     loss = loss_adversarial(target[:,0], prediction[:,0])
-    loss += delta * loss_class(target[:,1:1+labels_dim], prediction[:,1:1+labels_dim])
-    loss += gamma * loss_metric(target[:,2+labels_dim:], prediction[:,2+labels_dim:])
-    loss += zeta * loss_reconstruction(image, generated_image)
-    if alpha:
-        loss += beta * loss_kl(latent)
+    loss += parameter.delta * loss_class(target[:,1:1+labels_dim], prediction[:,1:1+labels_dim])
+    loss += parameter.gamma * loss_metric(target[:,2+labels_dim:], prediction[:,2+labels_dim:])
+    loss += parameter.zeta * loss_reconstruction(image, generated_image)
+    if parameter.alpha:
+        loss += parameter.beta * loss_kl(latent)
     return mean(loss)

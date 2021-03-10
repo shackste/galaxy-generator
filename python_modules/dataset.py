@@ -1,13 +1,13 @@
 """ load training data
 """
 
+from file_system import file_galaxy_images, file_galaxy_labels
 
 # galaxy images
 def get_x_train():
-    x_train = np.load(file_galaxy_images)
+    x_train = np.load(file_galaxy_images)  ## (N_samples,dim,dim,colors)
     x_train = x_train/255.0 ## rescale to 0<x<1
     x_train = np.rollaxis(x_train, -1, 1)  ## pytorch: (colors,dim,dim)
-    N_samples = x_train.shape[0]
     x_train = from_numpy(x_train).cuda()
     return x_train
 

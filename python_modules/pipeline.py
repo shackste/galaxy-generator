@@ -6,7 +6,7 @@ from encoder import Encoder4
 from decoder import Decoder4
 from discriminator import Discriminator4
 from sampler import gaussian_sampler
-from parameter import alpha
+from parameter import parameter
 
 ## all pipelines use the same networks
 encoder = Encoder4().cuda()
@@ -24,7 +24,7 @@ class VAE(NeuralNetwork):
 
     def forward(self, images, labels):
         latent = self.encoder(images, labels)
-        if alpha: ## in VAE mode, replace z by random sample
+        if parameter.alpha: ## in VAE mode, replace z by random sample
             latent = self.sampler(*latent)
         x_hat = self.decoder(latent,labels)
         return x_hat
@@ -42,7 +42,7 @@ class VAEGAN(NeuralNetwork):
 
     def forward(self, images, labels):
         latent = self.encoder(images, labels)
-        if alpha:
+        if parameter.alpha:
             latent = self.sampler(*latent)
         generated_images = self.decoder(latent,labels)
 

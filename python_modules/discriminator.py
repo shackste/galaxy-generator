@@ -8,9 +8,7 @@ from torch.nn import Sequential, \
 
 
 from neuralnetwork import NeuralNetwork
-from parameter import colors_dim, latent_dim, labels_dim, \
-                      optimizer, learning_rate, betas, \
-                      momentum, negative_slope
+from parameter import colors_dim, labels_dim, parameter
 
 class Discriminator1(NeuralNetwork):
     def __init__(self):
@@ -44,7 +42,7 @@ class Discriminator1(NeuralNetwork):
             Linear(256,1),
             Sigmoid(),
         )
-        self.set_optimizer(optimizer, lr=learning_rate, betas=betas)
+        self.set_optimizer(parameter.optimizer, lr=parameter.learning_rate, betas=parameter.betas)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -65,29 +63,29 @@ class Discriminator3(NeuralNetwork):
 
         self.conv0 = Sequential(
             Conv2d(colors_dim, 32, kernel_size=1, stride=1),
-            LeakyReLU(negative_slope=negative_slope),
+            LeakyReLU(negative_slope=parameter.negative_slope),
         )
         self.conv1 = Sequential(
             Conv2d(32, 64, kernel_size=kernel_size, stride=stride, padding=padding),
-            BatchNorm2d(64, momentum=momentum),
-            LeakyReLU(negative_slope=negative_slope),
+            BatchNorm2d(64, momentum=parameter.momentum),
+            LeakyReLU(negative_slope=parameter.negative_slope),
         )
         self.conv2 = Sequential(
             Conv2d(64, 128, kernel_size=kernel_size, stride=stride, padding=padding),
-            BatchNorm2d(128, momentum=momentum),
-            LeakyReLU(negative_slope=negative_slope),
+            BatchNorm2d(128, momentum=parameter.momentum),
+            LeakyReLU(negative_slope=parameter.negative_slope),
         )
         self.dense1 = Sequential(
             Flatten(),
             Linear(32768,1024),
-            BatchNorm1d(1024, momentum=momentum),
-            LeakyReLU(negative_slope=negative_slope),
+            BatchNorm1d(1024, momentum=parameter.momentum),
+            LeakyReLU(negative_slope=parameter.negative_slope),
         )
         self.dense2 = Sequential(
             Linear(1024,1),
             Sigmoid(),
         )
-        self.set_optimizer(optimizer, lr=learning_rate, betas=betas)
+        self.set_optimizer(parameter.optimizer, lr=parameter.learning_rate, betas=parameter.betas)
 
     def forward(self, x):
         x = self.conv0(x)
@@ -105,27 +103,27 @@ class Discriminator4(NeuralNetwork):
         padding = self.same_padding(kernel_size)
         self.conv0 = Sequential(
             Conv2d(colors_dim, 16, kernel_size=1, stride=1),
-            LeakyReLU(negative_slope=negative_slope),
+            LeakyReLU(negative_slope=parameter.negative_slope),
         )
         self.conv1 = Sequential(
             Conv2d(16, 32, kernel_size=kernel_size, stride=stride, padding=padding),
-            BatchNorm2d(32, momentum=momentum),
-            LeakyReLU(negative_slope=negative_slope)
+            BatchNorm2d(32, momentum=parameter.momentum),
+            LeakyReLU(negative_slope=parameter.negative_slope)
         )
         self.conv2 = Sequential(
             Conv2d(32, 64, kernel_size=kernel_size, stride=stride, padding=padding),
-            BatchNorm2d(64, momentum=momentum),
-            LeakyReLU(negative_slope=negative_slope)
+            BatchNorm2d(64, momentum=parameter.momentum),
+            LeakyReLU(negative_slope=parameter.negative_slope)
         )
         self.conv3 = Sequential(
             Conv2d(64, 128, kernel_size=kernel_size, stride=stride, padding=padding),
-            BatchNorm2d(128, momentum=momentum),
-            LeakyReLU(negative_slope=negative_slope)
+            BatchNorm2d(128, momentum=parameter.momentum),
+            LeakyReLU(negative_slope=parameter.negative_slope)
         )
         self.dense1 = Sequential(
             Flatten(),
             Linear(8192, 1024),
-            LeakyReLU(negative_slope=negative_slope)
+            LeakyReLU(negative_slope=parameter.negative_slope)
         )   ## outputs metric
 
         ## the following take metric as input
@@ -138,7 +136,7 @@ class Discriminator4(NeuralNetwork):
             Softmax(dim=1),
         )   ## outputs labels
 
-        self.set_optimizer(optimizer, lr=learning_rate, betas=betas)
+        self.set_optimizer(parameter.optimizer, lr=parameter.learning_rate, betas=parameter.betas)
 
     def forward(self, images):
         x = self.conv0(images)
