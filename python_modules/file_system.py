@@ -14,13 +14,16 @@ file_galaxy_labels = root + "training_solutions_rev1.csv"
 
 folder_results = root + "results/"
 
+print()
+print("!!!!!!!!!!\n")
 print(
-    f"{file_galaxy_images.split('/')[0]}" +
-    f" and {file_galaxy_labels.split('/')[0]}" +
+    f"{file_galaxy_images.split('/')[-1]}" +
+    f" and {file_galaxy_labels.split('/')[-1]}" +
     f" must be placed in google drive under " +
-    f"{'/'.join(root.split('/')[2:])}"
+    f"{'/'.join(root.split('/')[3:])}"
 )
-print("the results will be placed there, too.")
+print("the results will be placed there, too.\n")
+print()
 
 drive.mount("/drive")
 
