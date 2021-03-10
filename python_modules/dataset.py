@@ -1,6 +1,9 @@
 """ load training data
 """
 
+import numpy as np
+from torch import from_numpy
+
 from file_system import file_galaxy_images, file_galaxy_labels
 
 # galaxy images
