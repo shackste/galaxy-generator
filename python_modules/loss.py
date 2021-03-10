@@ -57,8 +57,8 @@ def loss_metric(target, prediction):
     return mse(target, prediction)
 
 
-def loss_GAN(target, prediction, image, generated_image, latent):
-    """ total loss of GAN
+def loss_generator(target, prediction, image, generated_image, latent):
+    """ total loss of generator
     
     target and prediction contain (axis=1)
         0               ; binary classification
