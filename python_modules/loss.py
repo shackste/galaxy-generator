@@ -4,7 +4,7 @@
 from torch import sum, log, mean
 from torch.nn import MSELoss, BCELoss
 
-from parameter import parameter, labels_dim
+from parameter import parameter, labels_dim, image_dim
 
 mse = MSELoss()
 bce = BCELoss()
