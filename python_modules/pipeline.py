@@ -6,6 +6,7 @@ from encoder import Encoder4
 from decoder import Decoder4
 from discriminator import Discriminator4
 from sampler import gaussian_sampler
+from parameter import alpha
 
 ## all pipelines use the same networks
 encoder = Encoder4().cuda()
