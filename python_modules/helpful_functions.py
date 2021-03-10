@@ -1,4 +1,4 @@
-""" helpful functions to investigate Network, performance and aid training
+""" helpful functions to investigate Network and performance
 """
 import numpy as np
 from imageio import imwrite
@@ -63,11 +63,3 @@ def write_generated_galaxy_images_iteration(*, iteration=None, images=None):
             k += 1
     write_RGB_image(image=flat_image, filename=f"samples_iter{iteration}.png")
 
-
-###################
-## abbreviations ##
-###################
-
-def return_batch(sample, i, size):
-    """ from sample return the i'th batch of size """
-    return sample[i*size : (i+1)*size]
