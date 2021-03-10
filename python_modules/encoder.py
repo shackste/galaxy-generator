@@ -8,10 +8,7 @@ from torch.nn import Sequential, \
 
 
 from neuralnetwork import NeuralNetwork
-from parameter import colors_dim, latent_dim, labels_dim, \
-                      optimizer, learning_rate, betas, \
-                      momentum, negative_slope, \
-                      alpha
+from parameter import colors_dim, labels_dim, parameter
 
 
 
@@ -45,13 +42,13 @@ class Encoder1(NeuralNetwork):
         )
         
         ## the following take the same input
-        self.dense_z_mu = Linear(256, latent_dim)
-        if alpha:
+        self.dense_z_mu = Linear(256, parameter.latent_dim)
+        if parameter.alpha:
             self.dense_z_std = Sequential(
-                Linear(256, latent_dim),
+                Linear(256, parameter.latent_dim),
                 Softplus(),
             )
-        self.set_optimizer(optimizer, lr=learning_rate, betas=betas)
+        self.set_optimizer(parameter.optimizer, lr=parameter.learning_rate, betas=parameter.betas)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -60,7 +57,7 @@ class Encoder1(NeuralNetwork):
         x = self.conv4(x)
         x = self.dense1(x)
         z_mu = self.dense_z_mu(x)
-        if not alpha:
+        if not parameter.alpha:
             return z_mu
         z_std = self.dense_z_std(x)
         return cat((z_mu, z_std), dim=1)
@@ -138,13 +135,13 @@ class Encoder2(NeuralNetwork):
         )
 
         ## the following take the same input from dense1
-        self.dense_z_mu = Linear(256, latent_dim)
-        if alpha:
+        self.dense_z_mu = Linear(256, parameter.latent_dim)
+        if parameter.alpha:
             self.dense_z_std = Sequential(
-                Linear(256, latent_dim),
+                Linear(256, parameter.latent_dim),
                 Softplus(),
             )
-        self.set_optimizer(optimizer, lr=learning_rate, betas=betas)
+        self.set_optimizer(parameter.optimizer, lr=parameter.learning_rate, betas=parameter.betas)
 
     def forward(self, x):
         inc1 = self.inc1_1(x)
@@ -161,7 +158,7 @@ class Encoder2(NeuralNetwork):
         x = self.conv4(cat((inc1,inc2), dim=1))
         x = self.dense1(x)
         z_mu = self.dense_z_mu(x)
-        if not alpha:
+        if not parameter.alpha:
             return z_mu
         z_std = self.dense_z_std(x)
         return cat((z_mu, z_std), dim=1)
@@ -177,33 +174,33 @@ class Encoder3(NeuralNetwork):
 
         self.conv0 = Sequential(
             Conv2d(colors_dim, 32, kernel_size=1, stride=1),
-            LeakyReLU(negative_slope=negative_slope),
+            LeakyReLU(negative_slope=parameter.negative_slope),
         )
         self.conv1 = Sequential(
             Conv2d(32, 64, kernel_size=kernel_size, stride=stride, padding=padding),
-            BatchNorm2d(64, momentum=momentum),
-            LeakyReLU(negative_slope=negative_slope),
+            BatchNorm2d(64, momentum=parameter.momentum),
+            LeakyReLU(negative_slope=parameter.negative_slope),
         )
         self.conv2 = Sequential(
             Conv2d(64, 128, kernel_size=kernel_size, stride=stride, padding=padding),
-            BatchNorm2d(128, momentum=momentum),
-            LeakyReLU(negative_slope=negative_slope),
+            BatchNorm2d(128, momentum=parameter.momentum),
+            LeakyReLU(negative_slope=parameter.negative_slope),
         )
         self.dense1 = Sequential(
             Flatten(),
             Linear(32768, 1024),
-            BatchNorm1d(1024, momentum=momentum),
-            LeakyReLU(negative_slope=negative_slope),
+            BatchNorm1d(1024, momentum=parameter.momentum),
+            LeakyReLU(negative_slope=parameter.negative_slope),
         )
 
         ## the following take the same input from dense1
-        self.dense_z_mu = Linear(1024, latent_dim)
-        if alpha:
+        self.dense_z_mu = Linear(1024, parameter.latent_dim)
+        if parameter.alpha:
             self.dense_z_std = Sequential(
-                Linear(1024, latent_dim),
+                Linear(1024, parameter.latent_dim),
                 Softplus(),
             )
-        self.set_optimizer(optimizer, lr=learning_rate, betas=betas)
+        self.set_optimizer(parameter.optimizer, lr=parameter.learning_rate, betas=parameter.betas)
 
     def forward(self, x):
         x = self.conv0(x)
@@ -211,7 +208,7 @@ class Encoder3(NeuralNetwork):
         x = self.conv2(x)
         x = self.dense1(x)
         z_mu = self.dense_z_mu(x)
-        if not alpha:
+        if not parameter.alpha:
             return z_mu
         z_std = self.dense_z_std(x)
         return cat((z_mu, z_std), dim=1)
@@ -227,38 +224,38 @@ class Encoder4(NeuralNetwork):
 
         self.conv0 = Sequential(
             Conv2d(colors_dim, 16, kernel_size=1, stride=1),
-            LeakyReLU(negative_slope=negative_slope),
+            LeakyReLU(negative_slope=parameter.negative_slope),
         )
         self.conv1 = Sequential(
             Conv2d(16, 32, kernel_size=kernel_size, stride=stride, padding=padding),
-            BatchNorm2d(32, momentum=momentum),
-            LeakyReLU(negative_slope=negative_slope),
+            BatchNorm2d(32, momentum=parameter.momentum),
+            LeakyReLU(negative_slope=parameter.negative_slope),
         )
         self.conv2 = Sequential(
             Conv2d(32, 64, kernel_size=kernel_size, stride=stride, padding=padding),
-            BatchNorm2d(64, momentum=momentum),
-            LeakyReLU(negative_slope=negative_slope),
+            BatchNorm2d(64, momentum=parameter.momentum),
+            LeakyReLU(negative_slope=parameter.negative_slope),
         )
         self.conv3 = Sequential(
             Conv2d(64,128, kernel_size=kernel_size, stride=stride, padding=padding),
-            BatchNorm2d(128, momentum=momentum),
-            LeakyReLU(negative_slope=negative_slope),
+            BatchNorm2d(128, momentum=parameter.momentum),
+            LeakyReLU(negative_slope=parameter.negative_slope),
             Flatten(), # next layer takes flat input with labels appended
         )
         self.dense1 = Sequential(
             Linear(8192+labels_dim, 1024),
-            BatchNorm1d(1024, momentum=momentum),
-            LeakyReLU(negative_slope=negative_slope)
+            BatchNorm1d(1024, momentum=parameter.momentum),
+            LeakyReLU(negative_slope=parameter.negative_slope)
         )
 
         ## the following take the same input from dense1
-        self.dense_z_mu = Linear(1024, latent_dim)
-        if alpha:
+        self.dense_z_mu = Linear(1024, parameter.latent_dim)
+        if parameter.alpha:
             self.dense_z_std = Sequential(
-                Linear(1024, latent_dim),
+                Linear(1024, parameter.latent_dim),
                 Softplus(),
             )
-        self.set_optimizer(optimizer, lr=learning_rate, betas=betas)
+        self.set_optimizer(parameter.optimizer, lr=parameter.learning_rate, betas=parameter.betas)
 
     def forward(self, images, labels):
         x = self.conv0(images)
@@ -268,7 +265,7 @@ class Encoder4(NeuralNetwork):
         x = cat((x, labels), dim=1)
         x = self.dense1(x)
         z_mu = self.dense_z_mu(x)
-        if not alpha:
+        if not parameter.alpha:
             return z_mu
         z_std = self.dense_z_std(x)
         return z_mu, z_std
