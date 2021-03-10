@@ -2,6 +2,7 @@
 """
 
 import numpy as np
+from pandas import read_csv
 from torch import from_numpy
 
 from file_system import file_galaxy_images, file_galaxy_labels
@@ -16,7 +17,7 @@ def get_x_train():
 
 # hierarchical galaxy labels
 def get_labels_train():
-    df_galaxy_labels =  pd.read_csv(file_galaxy_labels)
+    df_galaxy_labels =  read_csv(file_galaxy_labels)
     ## for now, only use top level labels
     labels_train = df_galaxy_labels[df_galaxy_labels.columns[1:4]].values
     labels_train = from_numpy(labels_train).float().cuda()
