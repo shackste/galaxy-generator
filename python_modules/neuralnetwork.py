@@ -1,4 +1,4 @@
-from torch import load
+from torch import save
 from torch.nn import Module
 
 from file_system import folder_results
@@ -12,7 +12,7 @@ class NeuralNetwork(Module):
     
     def save(self):
         """ save learned parameters to parameter_file """
-        torch.save(self.state_dict(), self.parameter_file)
+        save(self.state_dict(), self.parameter_file)
 
     def load(self):
         """ load learned parameters from parameter_file """
