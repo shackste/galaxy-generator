@@ -18,7 +18,7 @@ print(
     f"{file_galaxy_images.split('/')[0]}" +
     f" and {file_galaxy_labels.split('/')[0]}" +
     f" must be placed in google drive under " +
-    f"{root.split('/')[2:].join('/')}"
+    f"{'/'.join(root.split('/')[2:])}"
 )
 print("the results will be placed there, too.")
 
