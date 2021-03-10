@@ -1,6 +1,7 @@
 """ sample functions
 """
 
+import numpy as np
 from torch import randn
 
 # latent space
