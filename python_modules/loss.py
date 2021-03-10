@@ -71,3 +71,9 @@ def loss_generator(target, prediction, image, generated_image, latent):
     if parameter.alpha:
         loss += parameter.beta * loss_kl(latent)
     return mean(loss)
+
+def loss_discriminator(target, prediction):
+    """ total loss of discriminator """
+    loss = loss_adversarial(target[:,0], prediction[:,0])
+    loss += parameter.delta * loss_class(target[:,1:1+labels_dim], prediction[:,1:1+labels_dim])
+    return mean(loss)
