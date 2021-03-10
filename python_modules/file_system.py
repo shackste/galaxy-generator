@@ -20,7 +20,7 @@ print(
     f" must be placed in google drive under " +
     f"{root.split('/')[2:].join('/')}"
 )
-print("the results will be placed there, too."
+print("the results will be placed there, too.")
 
 drive.mount("/drive")
 
