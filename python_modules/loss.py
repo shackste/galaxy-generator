@@ -1,7 +1,7 @@
 """ loss functions
 """
 
-from torch import sum
+from torch import sum, log
 from torch.nn import MSELoss, BCELoss
 
 from parameter import parameter, labels_dim
