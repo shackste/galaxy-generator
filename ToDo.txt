@@ -1,6 +1,8 @@
-- create common usage account at https://wandb.ai/
-- link results to wandb.ai
 - search hyperparameters
-- write tests to verify goodness by eye
+- write tests to verify goodness of generated galaxies by eye
 - find good measure to verify goodness of generated galaxies
+    log severas measures, while one is used for training. consider the following?
+    - duality gap
+    - Wasserstein distance
+    - mutual information
 - include hierarchical labels

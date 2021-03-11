@@ -3,9 +3,6 @@
 
 import os
 
-from google.colab import drive
-
-
 root = "/drive/MyDrive/FHNW/galaxy_generator/"
 
 ## download from https://www.kaggle.com/c/galaxy-zoo-the-galaxy-challenge/data
@@ -22,8 +19,6 @@ print(
     f"{'/'.join(root.split('/')[3:])}"
 )
 print("the results will be placed there, too.\n")
-
-drive.mount("/drive")
 
 if not os.path.exists(folder_results):
     os.mkdir(folder_results)
