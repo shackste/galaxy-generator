@@ -15,7 +15,7 @@ bce = BCELoss()
 ## use the same loss as tensorflow: - sum target * log(prediction)
 def categorical_crossentropy(target, prediction):
     """ calculate loss for one hot encoded labels with uncertain target """
-    loss = - sum(target * log(prediction))
+    loss = - sum(target * log(prediction), dim=-1)
     return loss
 
 cross_entropy = categorical_crossentropy
@@ -23,13 +23,14 @@ cross_entropy = categorical_crossentropy
 
 def loss_reconstruction(image, generated_image):
     """ divergence of generated image from input image """
-    return mse(image, generated_image) * image_dim**2
+    return mse(generated_image, image) * image_dim**2
 
 
 def loss_kl(latent):
     """ divergence of recontstructed latent distribution from true distribution, assumed to be unit gaussian """
     loss = 1 + 2*log(latent[1]) - square(latent[0]) - square(latent[1])
-    loss = -0.5 * sum(loss) #, axis=-1)
+    loss = -0.5 * sum(loss, dim=-1)
+    loss = mean(loss)
     return loss
 
 
@@ -48,12 +49,14 @@ def loss_adversarial(target, prediction):
 
 def loss_class(target, prediction):
     """ divergence of classification of subclasses in sample distribution """
-    return cross_entropy(target, prediction)
+    loss = cross_entropy(target, prediction)
+    loss = mean(loss)
+    return loss
 
 
 def loss_metric(target, prediction):
     """ divergence of internal metric """
-    return mse(target, prediction)
+    return mse(prediction, target)
 
 
 def loss_generator(target, prediction, image, generated_image, latent):
