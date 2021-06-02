@@ -2,12 +2,13 @@
 """
 
 from torch import sum, log, mean, square
-from torch.nn import MSELoss, BCELoss
+from torch.nn import MSELoss, BCELoss, L1Loss
 
 from parameter import parameter, labels_dim, image_dim
 
 mse = MSELoss()
 bce = BCELoss()
+L1 = L1Loss(reduction="sum")
 
 
 ## pytorch has no categorical crossentropy for uncertain onehotencoded target
@@ -15,7 +16,7 @@ bce = BCELoss()
 ## use the same loss as tensorflow: - sum target * log(prediction)
 def categorical_crossentropy(target, prediction):
     """ calculate loss for one hot encoded labels with uncertain target """
-    loss = - sum(target * log(prediction), dim=-1)
+    loss = - sum(target * log(prediction+1e-20), dim=-1)
     return loss
 
 cross_entropy = categorical_crossentropy
@@ -23,7 +24,8 @@ cross_entropy = categorical_crossentropy
 
 def loss_reconstruction(image, generated_image):
     """ divergence of generated image from input image """
-    return mse(generated_image, image) * image_dim**2
+#    return mse(generated_image, image) * image_dim**2
+    return L1(generated_image, image)  ## L1 leads to less blurry images, as it penalizes small deviations more strongly
 
 
 def loss_kl(latent):
@@ -45,13 +47,19 @@ def loss_VAE(image, generated_image, latent_mean, latent_std):
 def loss_adversarial(target, prediction):
     """ divergence of discriminating real and fake images """
     return bce(prediction, target)
-
+#    return mse(prediction, target)  ## MSE leads to more stable training and more qualitative results, 1703.10593
 
 def loss_class(target, prediction):
     """ divergence of classification of subclasses in sample distribution """
     loss = cross_entropy(target, prediction)
     loss = mean(loss)
     return loss
+
+def loss_latent(target, prediction):
+    """ loss for deviation of latent distribution """
+    target = cat(target, dim=1)
+    prediction = cat(prediction, dim=1)
+    return loss_metric(target, prediction)
 
 
 def loss_metric(target, prediction):

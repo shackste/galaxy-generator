@@ -1,4 +1,4 @@
-from torch import save
+from torch import save, load
 from torch.nn import Module
 
 from file_system import folder_results
@@ -26,3 +26,13 @@ class NeuralNetwork(Module):
 
     def set_optimizer(self, optimizer, **kwargs):
         self.optimizer = optimizer(self.parameters(), **kwargs)
+
+
+def update_networks_on_loss(loss, *networks):
+    if not loss:
+        return
+    for network in networks:
+        network.zero_grad()
+    loss.backward()
+    for network in networks:
+        network.optimizer.step()

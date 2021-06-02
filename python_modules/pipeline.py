@@ -48,3 +48,4 @@ class VAEGAN(NeuralNetwork):
 
         output = self.discriminator(generated_images)
         return output # true/fake, labels, metric
+

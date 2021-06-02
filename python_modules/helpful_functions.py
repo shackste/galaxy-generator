@@ -61,5 +61,6 @@ def write_generated_galaxy_images_iteration(*, iteration=None, images=None):
         for ih in range(h):
             flat_image[:,iw*d:(iw+1)*d, ih*d:(ih+1)*d] = images[k]
             k += 1
+    flat_image = (flat_image*255).astype("uint8")
     write_RGB_image(image=flat_image, filename=f"samples_iter{iteration}.png")
 

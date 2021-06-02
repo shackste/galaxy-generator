@@ -109,6 +109,10 @@ def gather_total_intensity_data(images):
     intensities = map(compute_total_intensities, images)
     return np.array(list(intensities))
 
+def compute_average_intensity(images):
+    intensities = gather_total_intensity_data(images)
+    return np.mean(intensities)
+
 def compute_divergence_total_intensity_statistics(images1, images2, range=(1.5,3), bins=10):
     """ compute and return KL distance of distribution of log(total intensities)
     in different color bands of two sets of images
@@ -178,6 +182,10 @@ def gather_bluriness_metrics(images):
     """ collect bluriness metrics of provided RGB images after grayscaling them """
     bluriness = map(lambda image: compute_blurriness_metric(RGB2grayscale(image)), images)
     return list(bluriness)
+
+def compute_average_bluriness(images):
+    bluriness = gather_bluriness_metrics(images)
+    return np.mean(bluriness)
 
 
 def compute_divergence_bluriness_statistics(images1, images2, range=(-4,-2), bins=10):
