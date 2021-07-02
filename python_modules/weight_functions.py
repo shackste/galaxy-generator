@@ -1,4 +1,4 @@
-
+import numpy as np
 
 def constant_weight(*args, weight=1.):
     return weight
