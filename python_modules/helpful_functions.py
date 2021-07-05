@@ -1,14 +1,20 @@
 """ helpful functions to investigate Network and performance
 """
 import numpy as np
+import matplotlib.pyplot as plt
 from imageio import imwrite
 from torch import rand
-from torchsummary import summary
+#from torchsummary import summary
 from IPython.display import display
-from torchviz import make_dot
+#from torchviz import make_dot
 
 from file_system import folder_results
 from parameter import image_dim, input_size
+
+
+def show_image(image):
+    plt.imshow(image.permute(1, 2, 0))
+    plt.show()
 
 #########################
 ## investigate network ##

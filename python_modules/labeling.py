@@ -1,11 +1,12 @@
 import numpy as np
-from torch import cat
+from torch import cat, sum
 
 
 label_group_sizes = [3,2,2,2,4,2,3,7,3,3,6]
 labels_dim = np.sum(label_group_sizes)
 
 class_groups = {
+    # group : indices
     0 : (),
     1 : (1,2,3),
     2 : (4,5),
@@ -22,28 +23,39 @@ class_groups = {
 
 class_groups_indices = {g:np.array(ixs) for g, ixs in class_groups.items()}
 
+hierarchy = {
+    # group : parent (group, label)
+    2: (1, 1),
+    3: (2, 1),
+    4: (2, 1),
+    5: (2, 1),
+    7: (1, 0),
+    8: (6, 0),
+    9: (2, 0),
+    10: (4, 0),
+    11: (4, 0),
+}
 
-def make_galaxy_labels_hierarchical(groups):
+
+
+def make_galaxy_labels_hierarchical(labels):
     """ transform groups of galaxy label probabilities to follow the hierarchical order defined in galaxy zoo
     more info here: https://www.kaggle.com/c/galaxy-zoo-the-galaxy-challenge/overview/the-galaxy-zoo-decision-tree
-    groups is a list of Nxl torch tensors, where N is the batch size
-    and l is the number of labels in each group, listed in label_group_sizes
-    in each group probabilities should add to one
+    labels is a NxL torch tensor, where N is the batch size and L is the number of labels,
+    all labels should be > 1
+    the indices of label groups are listed in class_groups_indices
 
     Return
     ------
     hierarchical_labels : NxL torch tensor, where L is the total number of labels
     """
-    ## first [0] group has norm unity
-    groups[1] = groups[1] * groups[0][:,1].unsqueeze(-1) ## edge on
-    groups[2] = groups[2] * groups[1][:,1].unsqueeze(-1) ## sign of a bar
-    groups[3] = groups[3] * groups[1][:,1].unsqueeze(-1) ## sign of spirals
-    groups[4] = groups[4] * groups[1][:,1].unsqueeze(-1) ## bulge prominence
-#    groups[5] = groups[5] * sum(groups[0][:,:2], dim=1).unsqueeze(-1) ## anything odd  ## should be nomalized without artifact (1,3)
-    groups[6] = groups[6] * groups[0][:,0].unsqueeze(-1) ## how round
-    groups[7] = groups[7] * groups[5][:,0].unsqueeze(-1) ## odd features
-    groups[8] = groups[8] * groups[1][:,0].unsqueeze(-1) ## bulge shape
-    groups[9] = groups[9] * groups[3][:,0].unsqueeze(-1) ## tightly wound arms
-    groups[10] = groups[10] * groups[3][:,0].unsqueeze(-1) ## how many arms
-    hierarchical_labels = cat(groups, dim=1)
-    return hierarchical_labels
+    groups = lambda i: labels[:,class_groups_indices[i]]
+
+    for i in range(1,12):
+        group = groups(i)
+        ## normalize probabilities to 1
+        group = group / sum(group, dim=1)
+        ## follow hierarchical structure
+        if i not in [1,6]:
+            group = group * groups(hierarchy[i][0])[:,hierarchy[i][1]].unsqueeze(-1)
+    return labels

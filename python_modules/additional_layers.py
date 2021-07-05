@@ -17,6 +17,7 @@ class Reshape(Module):
     def __init__(self, *shape):
         super(Reshape, self).__init__()
         self.shape = shape
+
     def forward(self, input):
         return input.view(input.shape[0], *self.shape)
 
