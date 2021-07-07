@@ -5,7 +5,8 @@ import numpy as np
 from pandas import read_csv
 from torch import from_numpy
 from torchvision.transforms import Compose, CenterCrop, ToTensor, RandomAffine, Resize, RandomVerticalFlip, RandomHorizontalFlip, RandomErasing, ToPILImage
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, Subset
+from sklearn.model_selection import train_test_split
 from glob import glob
 from PIL import Image
 
@@ -47,10 +48,7 @@ augment = Compose([
 
 ## Dataset
 
-import matplotlib.pyplot as plt
-from torch import tensor
-
-class data_set(Dataset):
+class DataSet(Dataset):
     def __init__(self):
         self.path_images = folder_images
         file_list = glob(self.path_images + "*")
@@ -71,8 +69,14 @@ class data_set(Dataset):
         return img, label
 
 class MakeDataLoader:
-    def __init__(self):
-        self.dataset = data_set()
+    def __init__(self, test_size=0.1, random_state=2):
+        dataset = DataSet()
+        train_idx, test_idx = train_test_split(list(range(len(dataset))), test_size=test_size, random_state=random_state)
+        self.dataset_train = Subset(dataset, train_idx)
+        self.dataset_test = Subset(dataset, test_idx)
 
-    def get_data_loader(self, batch_size=64):
-        return DataLoader(self.dataset, batch_size=batch_size, shuffle=True, drop_last=True )
+    def get_data_loader_train(self, batch_size=64):
+        return DataLoader(self.dataset_train, batch_size=batch_size, shuffle=True, drop_last=True )
+
+    def get_data_loader_test(self, batch_size=64):
+        return DataLoader(self.dataset_test, batch_size=batch_size, shuffle=True, drop_last=True )
