@@ -3,6 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from imageio import imwrite
+import torch
 from torch import rand
 #from torchsummary import summary
 from IPython.display import display
@@ -20,7 +21,7 @@ def show_image(image):
 ## investigate network ##
 #########################
 
-def summarize(network, input_size=input_size, graph=False, labels_dim=None):
+def summarize(network: torch.nn.Module, input_size=input_size, graph=False, labels_dim=None) -> None:
     """ display summary of network with input of given size
 
     graph: display graph of network
@@ -44,7 +45,7 @@ def summarize(network, input_size=input_size, graph=False, labels_dim=None):
 ## investigate results ##
 #########################
 
-def write_RGB_image(*, image=None, filename=None):
+def write_RGB_image(*, image=None, filename=None) -> None:
     """ write RGB image to file """
     assert image is not None, "provide image"
     assert filename is not None, "provide filename"
@@ -53,7 +54,7 @@ def write_RGB_image(*, image=None, filename=None):
     imwrite(folder_results+filename, image)
 
 
-def write_generated_galaxy_images_iteration(*, iteration=None, images=None):
+def write_generated_galaxy_images_iteration(*, iteration=None, images=None) -> None:
     """ write set of galaxy images to file """
     assert type(iteration) is int, "provide iteration as integer"
     assert images is not None, "provide generated galaxy images"

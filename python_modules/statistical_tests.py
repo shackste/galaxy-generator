@@ -1,13 +1,13 @@
 """ Procedures for statistical tests of goodness of generated samples"""
 
 import numpy as np
+import torch
 import matplotlib.pyplot as plt
 import scipy.ndimage as ndi
 from scipy.ndimage.filters import gaussian_filter
 from astropy.stats import SigmaClip
 from photutils.background import Background2D, MedianBackground, SExtractorBackground
 from cv2 import Laplacian
-from torch import einsum, tensor
 
 from photutils import detect_threshold, detect_sources
 from statmorph import source_morphology
@@ -20,8 +20,9 @@ from statmorph import source_morphology
 
 ################################################################################
 ## from https://stackoverflow.com/questions/22056667/kl-kullback-leibler-distance-with-histogram-smoothing-in-python
+################################################################################
 
-def kl(p, q):
+def kl(p: np.array, q: np.array) -> np.array:
     """ compute Kullback-Leibler distance between distributions p and q
     p and q are values of distribution functions with identical x
     usually renormalized histograms with same range and bins
@@ -33,7 +34,7 @@ def kl(p, q):
     return np.sum(np.where((q != 0) * (p != 0), p * np.log(p / q), 0))
 
 
-def smoothed_histogram_kl_distance(a, b, range=None, nbins=10, sigma=1):
+def smoothed_histogram_kl_distance(a: np.array, b: np.array, range=None, nbins=10, sigma=1) -> np.array:
     """ compute Kullback-Leibler distance between smoothed distribution of 1D data a and b
     """
     ahist, bhist = (np.histogram(a, range=range, bins=nbins, normed=True)[0],
@@ -48,7 +49,7 @@ def smoothed_histogram_kl_distance(a, b, range=None, nbins=10, sigma=1):
 ################################################################################
 
 
-def smoothed_histogramdd_kl_distance(a, b, range=None, bins=10, sigma=1):
+def smoothed_histogramdd_kl_distance(a: np.array, b: np.array, range=None, bins=10, sigma=1) -> np.array:
     """ compute Kullback-Leibler distance between smoothed distribution of data a and b
     a and b can have any dimension. for interpretation of dimensions, see docstring of np.histogramdd
     """
@@ -66,7 +67,7 @@ def smoothed_histogramdd_kl_distance(a, b, range=None, bins=10, sigma=1):
     return kl(asmooth, bsmooth)
 
 
-def get_weighted_3Dprojected_mean(H, edges):
+def get_weighted_3Dprojected_mean(H: np.array, edges: list) -> np.array:
     """ compute weighed mean of 3D histogram, projected along third dimension """
     z_center = np.mean([edges[2][:-1], edges[2][1:]], axis=0)
     print(z_center)
@@ -79,7 +80,7 @@ def get_weighted_3Dprojected_mean(H, edges):
 
 
 
-def plot_projected_histogram3D(H, edges, axis_labels=None):
+def plot_projected_histogram3D(H: np.array, edges: list, axis_labels=None) -> None:
     """ plot projected map of 3D histogram.
     Third dimension is shown as colored average on 2D map
 
@@ -97,23 +98,24 @@ def plot_projected_histogram3D(H, edges, axis_labels=None):
 #### total intesity ####
 ########################
 
-def compute_total_intensities(image):
+def compute_total_intensities(image: torch.Tensor) -> list:
     """ return total intensity of individual color bands """
     segmap = get_segmentation_map(image)
     intensities = [np.sum(color[segmap]).item() for color in image]
     return intensities
 
 
-def gather_total_intensity_data(images):
+def gather_total_intensity_data(images: torch.Tensor) -> np.array:
     """ return array containing total intensities of individual color bands in images """
     intensities = map(compute_total_intensities, images)
     return np.array(list(intensities))
 
-def compute_average_intensity(images):
+def compute_average_intensity(images: torch.Tensor) -> float:
     intensities = gather_total_intensity_data(images)
     return np.mean(intensities)
 
-def compute_divergence_total_intensity_statistics(images1, images2, range=(1.5,3), bins=10):
+def compute_divergence_total_intensity_statistics(images1: torch.Tensor, images2: torch.Tensor,
+                                                  range=(1.5,3), bins=10) -> np.array:
     """ compute and return KL distance of distribution of log(total intensities)
     in different color bands of two sets of images
     """
@@ -128,19 +130,19 @@ def compute_divergence_total_intensity_statistics(images1, images2, range=(1.5,3
 #### image residuals ####
 #########################
 
-def compute_residual(image1, image2):
+def compute_residual(image1: torch.Tensor, image2: torch.Tensor) -> float:
     """ compute the residual of two images of same size """
     return ((image1 - image2)**2).sum().item()
 
 
-def compute_residual_average_image(images1, images2):
+def compute_residual_average_image(images1: torch.Tensor, images2: torch.Tensor) -> float:
     """ compute the residual of average of two sets of images, all of identical size """
     avg_img1 = images1.mean(axis=0)
     avg_img2 = images2.mean(axis=0)
     return compute_residual(avg_img1, avg_img2)
 
 
-def get_residuals_randomly_picked_image_pairs(images, N=32):
+def get_residuals_randomly_picked_image_pairs(images: torch.Tensor, N=32) -> list:
     """ compute residuals of N pairs of prodived images """
     idx = list(np.random.choice(len(images), 2*N, replace=False))
     residuals = []
@@ -150,7 +152,7 @@ def get_residuals_randomly_picked_image_pairs(images, N=32):
     return residuals
 
 
-def get_image_pair_residual_statistics(images, N=32):
+def get_image_pair_residual_statistics(images: torch.Tensor, N=32) -> np.array:
     """ return average and standard deviation of residuals of N random pairs of images """
     residuals = get_residuals_randomly_picked_image_pairs(images, N=N)
     mu = np.mean(residuals)
@@ -163,32 +165,33 @@ def get_image_pair_residual_statistics(images, N=32):
 ###################
 
 
-def compute_blurriness_metric(image_channel):
+def compute_blurriness_metric(image_channel: torch.Tensor) -> float:
     """ compute bluriness metric as variance of laplacian  """
     lapl = Laplacian(image_channel.numpy(), 5)
     bluriness = lapl.var()
     return bluriness
 
 
-grayscale_weights = tensor([0.299, 0.587, 0.114]) ## RGB weights for eye-pleasing grayscale
+grayscale_weights = torch.tensor([0.299, 0.587, 0.114]) ## RGB weights for eye-pleasing grayscale
 
 
-def RGB2grayscale(image):
-    scaled_image = einsum("i,ijk->jk", grayscale_weights, image)
+def RGB2grayscale(image: torch.Tensor) -> torch.Tensor:
+    scaled_image = torch.einsum("i,ijk->jk", grayscale_weights, image)
     return scaled_image
 
 
-def gather_bluriness_metrics(images):
+def gather_bluriness_metrics(images: torch.Tensor) -> list:
     """ collect bluriness metrics of provided RGB images after grayscaling them """
     bluriness = map(lambda image: compute_blurriness_metric(RGB2grayscale(image)), images)
     return list(bluriness)
 
-def compute_average_bluriness(images):
+def compute_average_bluriness(images: torch.Tensor) -> np.array:
     bluriness = gather_bluriness_metrics(images)
     return np.mean(bluriness)
 
 
-def compute_divergence_bluriness_statistics(images1, images2, range=(-4,-2), bins=10):
+def compute_divergence_bluriness_statistics(images1: torch.Tensor, images2: torch.Tensor,
+                                            range=(-4,-2), bins=10) -> np.array:
     """ compute and return KL distance of distribution of bluriness metrics of grayscaled RGB images """
     b1, b2 = map(gather_bluriness_metrics, [images1, images2])
     b1, b2 = np.log10([b1,b2])
@@ -202,10 +205,10 @@ def compute_divergence_bluriness_statistics(images1, images2, range=(-4,-2), bin
 ##################################
 
 
-def get_segmentation_map(image,
+def get_segmentation_map(image: torch.Tensor,
                          npixels=5, ## minimum number of connectied pixels
                          get_mask=False,
-                         ):
+                         ) -> torch.Tensor:
     """ compute smoothed segmentation map marking the part of the image that contains the main source
 
     optional: when get_mask=True, also provide a mask map of all additional saurces
@@ -234,7 +237,9 @@ def get_segmentation_map(image,
             mask[segm.data == obj_label] = True
         return segmap, mask
 
-def remove_background(image, box_size=4, filter_size=3, mask=None, pass_background=False):
+def remove_background(image: torch.Tensor,
+                      box_size=4, filter_size=3,
+                      mask=None, pass_background=False) -> torch.Tensor:
     """ remove background noise from given image """
     sigma_clip = SigmaClip(sigma=3.)
     #    bkg_estimator = MedianBackground()
@@ -248,10 +253,10 @@ def remove_background(image, box_size=4, filter_size=3, mask=None, pass_backgrou
     return (clean_image, bkp.background) if pass_background else clean_image
 
 
-def extract_morphological_properties(image,
+def extract_morphological_properties(image: torch.Tensor,
                               gain=1e4, ## assumed average electron counts per pixel at effective radius
                               npixels=5, ## minimum number of connectied pixels
-                              plot=False):
+                              plot=False) -> list:
     """ extract non-parametric morphological diagnostics from galaxy image using https://github.com/vrodgom/statmorph
     image is 2D representation of galaxy, either one colorband or total intensity (!!! check which is best, red-band?)
 

@@ -29,7 +29,7 @@ class PrintShape(Module):
         -----
         >>> torch.nn.Sequential(
         >>>     ...
-        >>>     Reshape(*shape)
+        >>>     PrintShape()
         >>>     ...
         >>> )
     """

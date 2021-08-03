@@ -1,6 +1,6 @@
 from torch import abs, mean, all
 
-def accuracy_discriminator(target, prediction, p=0.9):
+def accuracy_discriminator(target: torch.Tensor, prediction: torch.Tensor, p=0.9) -> float:
     """ measure accuracy of discriminator results
     count predictions with p or less certainty for correct target
     """
@@ -10,7 +10,7 @@ def accuracy_discriminator(target, prediction, p=0.9):
     return mean(accurate.float()).item()
 
 
-def accuracy_classifier(target, prediction, p=0.1):
+def accuracy_classifier(target: torch.Tensor, prediction: torch.Tensor, p=0.1) -> float:
     """ measure accuracy of classifier results
     count predictions with all classes at p or less distance to target
     """
