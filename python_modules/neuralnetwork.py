@@ -25,7 +25,11 @@ class NeuralNetwork(torch.nn.Module):
 
     def set_optimizer(self, optimizer, **kwargs) -> None:
         self.optimizer = optimizer(self.parameters(), **kwargs)
-
+        
+    def get_total_number_parameters(self) -> float:
+        """ return total number of parameters """
+        return sum([p.numel() for p in classifier.parameters()])
+        
 
 def update_networks_on_loss(loss: torch.Tensor, *networks) -> None:
     if not loss:

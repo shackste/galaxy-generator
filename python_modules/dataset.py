@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, Dataset, Subset
 from sklearn.model_selection import train_test_split
 from glob import glob
 from PIL import Image
-
+from torch.utils.data.dataloader import default_collate
 
 from file_system import file_galaxy_images, file_galaxy_labels, folder_images
 
@@ -35,7 +35,7 @@ def get_labels_train() -> torch.Tensor:
 
 augment = Compose([
     RandomVerticalFlip(),
-#    RandomHorizontalFlip(),
+    RandomHorizontalFlip(),
     RandomAffine((0,360), (0.01,)*2),   # rotation, -4 to 4 translation
     CenterCrop(207),
 #    Resize((150,)*2),
@@ -80,25 +80,28 @@ class DataSet(Dataset):
             img = augment(img)
         return img, label
 
-N_batch = 32
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class MakeDataLoader:
-    def __init__(self, test_size=0.1, random_state=2, device=torch.device("cpu"), N_sample=-1):
-        self.device = device
+    def __init__(self, test_size=0.1, random_state=2, N_sample=-1):
         dataset = DataSet()
         train_idx, test_idx = train_test_split(list(range(len(dataset))), test_size=test_size, random_state=random_state)
         valid_idx, test_idx = train_test_split(list(range(len(test_idx))), test_size=0.5, random_state=random_state+1)
-        self.dataset_train = Subset(dataset, train_idx)
+
+        indices = torch.randperm(len(train_idx))[:N_sample]
+        self.dataset_train = Subset(dataset, np.array(train_idx)[indices])
         self.dataset_valid = Subset(dataset, valid_idx)
         self.dataset_test = Subset(dataset, test_idx)
         self.dataset_test.test_data = True
+        
+        self.collate_fn = lambda x: list(map(lambda o: o.to(device), default_collate(x)))
 
 
     def get_data_loader_train(self, batch_size=64, **kwargs) -> DataLoader:
-        return DataLoader(self.dataset_train, batch_size=batch_size, shuffle=True, drop_last=True, pin_memory=self.device==torch.device("cuda"), **kwargs)
+        return DataLoader(self.dataset_train, batch_size=batch_size, shuffle=True, drop_last=True, collate_fn=self.collate_fn, **kwargs)
 
     def get_data_loader_test(self, batch_size=64, **kwargs) -> DataLoader:
-        return DataLoader(self.dataset_test, batch_size=batch_size, shuffle=True, drop_last=True, pin_memory=self.device==torch.device("cuda"), **kwargs)
+        return DataLoader(self.dataset_test, batch_size=batch_size, shuffle=True, drop_last=True, collate_fn=self.collate_fn, **kwargs)
 
     def get_data_loader_valid(self, batch_size=64, **kwargs) -> DataLoader:
-        return DataLoader(self.dataset_valid, batch_size=batch_size, shuffle=True, drop_last=True, pin_memory=self.device==torch.device("cuda"), **kwargs)
+        return DataLoader(self.dataset_valid, batch_size=batch_size, shuffle=True, drop_last=True, collate_fn=self.collate_fn, **kwargs)
