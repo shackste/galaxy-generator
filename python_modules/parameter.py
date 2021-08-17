@@ -17,7 +17,7 @@ from torch.optim import Adam
 # Input
 image_dim = 64
 colors_dim = 3
-labels_dim = 3
+labels_dim = 37 #3
 input_size = (colors_dim,image_dim,image_dim)
 
 
