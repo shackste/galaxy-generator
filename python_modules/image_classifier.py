@@ -208,6 +208,7 @@ class ImageClassifier(ClassifierBase):
     def train_epoch(self, 
                     data_loader_train: torch.utils.data.DataLoader,
                     data_loader_valid: torch.utils.data.DataLoader,
+                    track: bool = False,
                    ) -> None:
         for images, labels in tqdm(data_loader_train, desc=f"epoch {self.epoch}"):
             loss = self.train_step(images, labels)
@@ -217,20 +218,37 @@ class ImageClassifier(ClassifierBase):
                 loss = self.train_step(images, labels)
                 raise Exception("loss is NaN")
             if not self.iteration % self.evaluation_steps - 1:
-                loss_regression, loss_variance, accs, variance = self.evaluate_batch(images, labels, print_labels=True)
-                self.losses_regression.append(self.iteration, loss_regression)
-                self.losses_variance.append(self.iteration, loss_variance)
-                self.losses_train.append(self.iteration, loss_regression+loss_variance)
-                self.sample_variances_train.append(self.iteration, variance)
-                for group, acc in accs.items():
+                loss_regression_train, loss_variance_train, accs_train, variance_train = self.evaluate_batch(images, labels, print_labels=True)
+                loss_train = loss_regression_train + loss_variance_train*self.weight_loss_sample_variance
+                self.losses_regression.append(self.iteration, loss_regression_train)
+                self.losses_variance.append(self.iteration, loss_variance_train)
+                self.losses_train.append(self.iteration, loss_train)
+                self.sample_variances_train.append(self.iteration, variance_train)
+                for group, acc in accs_train.items():
                     getattr(self, f"accuracies_Q{group}_train").append(self.iteration, acc)
                 for images, labels in data_loader_valid:
                     break
-                loss_regression, loss_variance, accs, variance = self.evaluate_batch(images, labels)
-                self.losses_valid.append(self.iteration, loss_regression+loss_variance)
-                self.sample_variances_valid.append(self.iteration, variance)
-                for group, acc in accs.items():
+                loss_regression_valid, loss_variance_valid, accs_valid, variance_valid = self.evaluate_batch(images, labels)
+                loss_valid = loss_regression_valid + loss_variance_valid*self.weight_loss_sample_variance
+                self.losses_valid.append(self.iteration, loss_valid)
+                self.sample_variances_valid.append(self.iteration, variance_valid)
+                for group, acc in accs_valid.items():
                     getattr(self, f"accuracies_Q{group}_valid").append(self.iteration, acc)
+                if track:
+                    import wandb
+                    logs = {
+                        "loss_regression_train" : loss_regression_train,
+                        "loss_variance_train" : loss_variance_train,
+                        "loss_train" : loss_train,
+                        "variance_train" : variance_train,
+                        "loss_regression_valid": loss_regression_valid,
+                        "loss_variance_valid": loss_variance_valid,
+                        "loss_valid": loss_valid,
+                        "variance_valid": variance_valid,
+                    }
+                    logs.update({f"accuracy_Q{group}_train":acc for group, acc in accs_train.items()})
+                    logs.update({f"accuracy_Q{group}_valid":acc for group, acc in accs_valid.items()})
+                    wandb.log(logs)
 
         self.epoch += 1
         self.scheduler.step()

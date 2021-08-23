@@ -30,32 +30,6 @@ def get_labels_train() -> torch.Tensor:
     labels_train = torch.from_numpy(labels_train).float()
     return labels_train
 
-
-## augmentation
-
-augment = Compose([
-    RandomVerticalFlip(),
-    RandomHorizontalFlip(),
-    RandomAffine((0,360), (0.01,)*2),   # rotation, -4 to 4 translation
-    CenterCrop(207),
-#    Resize((150,)*2),
-#    Resize((100,)*2),
-    Resize((64,)*2),
-    ToTensor(),
-])
-
-augment_test = Compose([
-#    RandomVerticalFlip(),
-#    RandomHorizontalFlip(),
-#    RandomAffine((0,360), (0.01,)*2),   # rotation, -4 to 4 translation
-    CenterCrop(207),
-#    Resize((150,)*2),
-#    Resize((100,)*2),
-    Resize((64,)*2),
-    ToTensor(),
-])
-
-
 ## Dataset
 
 class DataSet(Dataset):
@@ -68,6 +42,28 @@ class DataSet(Dataset):
         for file, label in zip(file_list, labels):
             self.data.append([file, label])
 
+        self.augment = Compose([
+            RandomVerticalFlip(),
+            RandomHorizontalFlip(),
+            RandomAffine((0, 360), (0.01,) * 2),  # rotation, -4 to 4 translation
+            CenterCrop(207),
+            #    Resize((150,)*2),
+            #    Resize((100,)*2),
+            Resize((64,) * 2),
+            ToTensor(),
+        ])
+
+        self.augment_test = Compose([
+            #    RandomVerticalFlip(),
+            #    RandomHorizontalFlip(),
+            #    RandomAffine((0,360), (0.01,)*2),   # rotation, -4 to 4 translation
+            CenterCrop(207),
+            #    Resize((150,)*2),
+            #    Resize((100,)*2),
+            Resize((64,) * 2),
+            ToTensor(),
+        ])
+
     def __len__(self) -> int:
         return len(self.data)
 
@@ -75,9 +71,9 @@ class DataSet(Dataset):
         file, label = self.data[index]
         img = Image.open(file)
         if self.test_data:
-            img = augment_test(img)
+            img = self.augment_test(img)
         else:
-            img = augment(img)
+            img = self.augment(img)
         return img, label
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
