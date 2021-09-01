@@ -36,7 +36,8 @@ class DataSet(Dataset):
     def __init__(self):
         self.path_images = folder_images
         file_list = glob(self.path_images + "*")
-        labels = get_labels_train()
+        file_list.sort()
+        labels = get_labels_train() ## labels are sorted already
         self.test_data = False
         self.data = []
         for file, label in zip(file_list, labels):
@@ -80,18 +81,21 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class MakeDataLoader:
     def __init__(self, test_size=0.1, random_state=2, N_sample=-1):
-        dataset = DataSet()
-        train_idx, test_idx = train_test_split(list(range(len(dataset))), test_size=test_size, random_state=random_state)
+        self.dataset = DataSet()
+        train_idx, test_idx = train_test_split(list(range(len(self.dataset))), test_size=test_size, random_state=random_state)
         valid_idx, test_idx = train_test_split(list(range(len(test_idx))), test_size=0.5, random_state=random_state+1)
 
         indices = torch.randperm(len(train_idx))[:N_sample]
-        self.dataset_train = Subset(dataset, np.array(train_idx)[indices])
-        self.dataset_valid = Subset(dataset, valid_idx)
-        self.dataset_test = Subset(dataset, test_idx)
+        self.dataset_train = Subset(self.dataset, np.array(train_idx)[indices])
+        self.dataset_valid = Subset(self.dataset, valid_idx)
+        self.dataset_test = Subset(self.dataset, test_idx)
         self.dataset_test.test_data = True
         
         self.collate_fn = lambda x: list(map(lambda o: o.to(device), default_collate(x)))
 
+
+    def get_data_loader_full(self, batch_size=64, shuffle=True, **kwargs) -> DataLoader:
+        return DataLoader(self.dataset, batch_size=batch_size, shuffle=shuffle, drop_last=True, collate_fn=self.collate_fn, **kwargs)
 
     def get_data_loader_train(self, batch_size=64, **kwargs) -> DataLoader:
         return DataLoader(self.dataset_train, batch_size=batch_size, shuffle=True, drop_last=True, collate_fn=self.collate_fn, **kwargs)

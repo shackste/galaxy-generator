@@ -8,12 +8,12 @@ from torch.nn import Sequential, Linear, Conv2d, MaxPool2d, Dropout, ReLU, Flatt
 import torchvision.models as models
 from torchvision.transforms import Compose, FiveCrop, Lambda, RandomErasing
 from torchvision.transforms.functional import rotate, hflip
-from torch.optim import SGD
+from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR, MultiStepLR
 
 from neuralnetwork import NeuralNetwork, update_networks_on_loss
 from additional_layers import MaxOut, Conv2dUntiedBias, ALReLU
-from labeling import make_galaxy_labels_hierarchical, label_group_sizes, labels_dim, class_group_layers, class_groups_indices
+from labeling import make_galaxy_labels_hierarchical, label_group_sizes, labels_dim, class_group_layers, class_groups_indices, ConsiderGroups
 from loss import mse, rmse, loss_sample_variance, get_sample_variance, plot_losses
 from accuracy_measures import measure_accuracy_classifier
 from file_system import folder_results
@@ -23,57 +23,35 @@ from losses import Losses, Accuracies
 
 class ClassifierBase(NeuralNetwork):
     def __init__(self,
-                 considered_layers_init = [1, 2, 3, 4, 5][:4],  ## group layers to be considered from start
+                 considered_groups: list=range(1,8), # groups of labels to be considered
                 ):
         super(ClassifierBase, self).__init__()
-        
-        self.considered_groups = set() ## container for set of groups to be considered in training and evaluation
-        self.considered_label_indices = []
-        for layer in considered_layers_init:
-            self.consider_layer(layer)
-        try:
-            self.considered_groups.remove(9) ## Question 9 is not modeled well
-        except:
-            pass
-        self.update_considered_label_indices()
-        
-    def consider_groups(self, groups: set) -> None:
+        self.considered_groups = ConsiderGroups(considered_groups)
+        self.considered_label_indices = self.considered_groups.get_considered_labels()
+
+    def consider_groups(self, *groups: int) -> None:
         """ add group to considered_groups """
-        self.considered_groups.update(groups)
+        for group in groups:
+            self.considered_groups.consider_group(group)
+        self.considered_label_indices = self.considered_groups.get_considered_labels()
 
     def consider_layer(self, layer: int) -> None:
         """ add groups in layer to considered_groups """
-        self.consider_groups(class_group_layers[layer])
-
-    def update_considered_label_indices(self) -> None:
-        """ find label indices of groups to be considered """
-        for group, indices in class_groups_indices.items():
-            if group in self.considered_groups:
-                for ix in indices:
-                    if not ix in self.considered_label_indices:
-                        self.considered_label_indices.append(ix)
-        self.considered_label_indices.sort()
-
-    def add_considered_layer(self, layer: int) -> None:
-        """ add layer to considered layers and update considered label indices """
-        self.consider_layer(layer)
-        self.update_considered_label_indices()
-
-
+        self.consider_groups(*class_group_layers[layer])
 
 class ImageClassifier(ClassifierBase):
     def __init__(self, 
                  seed=None,
-                 optimizer=SGD, optimizer_kwargs = {"nesterov":True, "momentum":0.9},
+                 optimizer=Adam, optimizer_kwargs = {},
                  learning_rate_init = 0.04,
                  gamma = 0.995, # learning rate decay factor
-                 considered_layers_init = [1, 2, 3, 4, 5][:4],  ## group layers to be considered from start
+                 considered_groups = list(range(12)),  ## group layers to be considered from start
                  sample_variance_threshold = 0.002,
                  weight_loss_sample_variance = 0, # 10.
                  evaluation_steps = 250 # number of batches between loss tracking
 
                 ):
-        super(ImageClassifier, self).__init__(considered_layers_init=considered_layers_init)
+        super(ImageClassifier, self).__init__(considered_groups=considered_groups)
         if seed is not None:
             torch.manual_seed(seed)
 
@@ -253,6 +231,10 @@ class ImageClassifier(ClassifierBase):
         self.epoch += 1
         self.scheduler.step()
         self.save()
+
+    def predict(self, images: torch.tensor) -> torch.Tensor:
+        self.eval()
+        return self(images)
         
     def evaluate_batches(self, data_loader: torch.utils.data.DataLoader) -> list:
         with torch.no_grad():
@@ -295,7 +277,7 @@ class ImageClassifier(ClassifierBase):
                     loss_sample_variance(labels_pred[:,self.considered_label_indices], 
                                          threshold=self.sample_variance_threshold
                                         ).item()
-            accs = measure_accuracy_classifier(labels_pred, labels, considered_groups=self.considered_groups)
+            accs = measure_accuracy_classifier(labels_pred, labels, considered_groups=self.considered_groups.considered_groups)
             variance = get_sample_variance(labels_pred[:,self.considered_label_indices]).item()
         return loss_regression, loss_variance, accs, variance
 
@@ -322,7 +304,7 @@ class ImageClassifier(ClassifierBase):
 
     def plot_accuracy(self, save=False):
         for group in range(1,12):
-            if not group in self.considered_groups:
+            if not group in self.considered_groups.considered_groups:
                 continue
             getattr(self, f"accuracies_Q{group}_train").plot()
         if save:
@@ -333,7 +315,7 @@ class ImageClassifier(ClassifierBase):
         
     def plot_test_accuracy(self, save=False):
         for group in range(1,12):
-            if not group in self.considered_groups:
+            if not group in self.considered_groups.considered_groups:
                 continue
             getattr(self, f"accuracies_Q{group}_valid").plot()
         if save:

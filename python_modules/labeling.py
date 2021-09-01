@@ -46,6 +46,106 @@ hierarchy = {
     11: (4, 0),
 }
 
+label_info = { # (name, next group), 0 == end
+    ## 1: smooth, disk or artifact/star
+    1 : ("smooth",7),
+    2 : ("disk",2),
+    3 : ("artifact",0),
+
+    ## 2: edge on
+    4 : ("edge-on disk",9),
+    5 : ("not edge-on",3),
+
+    ## 3: barred
+    6 : ("barred",4),
+    7 : ("not barred",4),
+
+    ## 4: spiral arms
+    8 : ("spiral arms",10),
+    9 : ("no spiral arms",5),
+
+    ## 5: bulge
+    10 : ("no bulge",6),
+    11 : ("noticable bulge",6),
+    12 : ("obvios bulge",6),
+    13 : ("domintat bulge",6),
+
+    ## 6: anything odd
+    14 : ("odd",8),
+    15 : ("not odd",0),
+
+    ## 7: roundness
+    16 : ("completely round",6),
+    17 : ("ellptic",6),
+    18 : ("cigar-shaped",6),
+
+    ## 8: odd features
+    19 : ("ring",0),
+    20 : ("lens",0),
+    21 : ("disturbed",0),
+    22 : ("irregular",0),
+    23 : ("other",0),
+    24 : ("merger",0),
+    25 : ("dust lane",0),
+
+    ## 9: bulge shape
+    26 : ("rounded",6),
+    27 : ("boxy",6),
+    28 : ("no bulge",6),
+
+    ## 10: tightness of spiral arms
+    29 : ("tight",11),
+    30 : ("medium",11),
+    31 : ("loose",11),
+
+    ## 11: number of spiral arms
+    32 : ("one",5),
+    33 : ("two",5),
+    34 : ("three",5),
+    35 : ("four",5),
+    36 : ("five+",5),
+    37 : ("can't tell",5),
+}
+
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+class ConsiderGroups:
+    def __init__(self,
+                 considered_groups: list = list(range(12)),  ## groups to be considered from start
+                 ):
+        self.considered_groups = []
+        self.considered_label_indices = []
+        for group in considered_groups:
+            self.consider_group(group)
+
+    def consider_group(self, group: int) -> None:
+        """ add group to considered_label_indices """
+        if group in self.considered_groups:
+            print(f"group {group} already considered")
+            return;
+        self.considered_groups.append(group)
+        self.considered_label_indices.extend(class_groups_indices[group])
+        self.considered_label_indices.sort()
+
+    def unconsider_group(self, group: int) -> None:
+        """ add group to considered_label_indices """
+        if group not in self.considered_groups:
+            print(f"group {group} not considered")
+            return;
+        self.considered_groups.remove(group)
+        for label in class_group_indices[group]:
+            self.considered_label_indices.remove(label)
+        self.considered_label_indices.sort()
+
+    def get_considered_labels(self) -> list:
+        """ returns list of considered label indices """
+        return self.considered_label_indices
+
+    def get_labels_dim(self):
+        """ obtain dimensions of label vector for considered groups """
+        return len(self.considered_label_indices)
 
 
 def make_galaxy_labels_hierarchical(labels: torch.Tensor) -> torch.Tensor:
@@ -90,3 +190,9 @@ def check_labels_hierarchical(labels: torch.Tensor) -> torch.Tensor:
         check = torch.round((norm - group_norm) * 4) != 0
         correct[check] = False
     return correct
+
+def generate_labels(batch_size: int):
+    """ generate batch of fake random galaxy labels that follow the hierarchical label structure """
+    labels = torch.rand(batch_size, labels_dim)
+    labels = make_galaxy_labels_hierarchical(labels)
+    return labels.to(device)

@@ -16,10 +16,12 @@ def gaussian_sampler(mu: torch.Tensor, sigma: torch.Tensor) -> torch.Tensor:
     dim = mu.shape[1]
     return mu + sigma*torch.randn(batch, dim, requires_grad=True).cuda()
 
-def generate_latent(batch_size: int) -> torch.Tensor:
+def generate_latent(batch_size: int, latent_dim: int = parameter.latent_dim, sigma=True) -> torch.Tensor:
     """ generate latent distribution """
-    latent_mu = torch.randn(batch_size, parameter.latent_dim).cuda()
-    latent_sigma = torch.rand(batch_size, parameter.latent_dim).cuda()
+    latent_mu = torch.randn(batch_size, latent_dim).cuda()
+    if not sigma:
+        return latent_mu
+    latent_sigma = torch.rand(batch_size, latent_dim).cuda()
     return latent_mu, latent_sigma
 
 

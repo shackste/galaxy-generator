@@ -7,10 +7,10 @@ from functools import partial
 from image_classifier import ImageClassifier as Classifier
 from dataset import MakeDataLoader
 
-epochs = 2
+epochs = 500
 reload = False ## if True, continue with previously trained parameters
 
-considered_layers_init = [1, 2, 3, 4, 5][:4]
+considered_groups = list(range(1,8))
 
 # setting used by Dielemann et al 2015
 #optimizer = SGD
@@ -23,12 +23,12 @@ sample_variance_threshold = 0.002
 seed_parameter = 7
 weight_loss_sample_variance = 0 #200.
 
-batch_size = 16
+batch_size = 32
 N_batches = 1
 N_sample = -1 #batch_size * N_batches
 evaluation_steps = 250 # N_batches*10
 
-track = True
+track = False
 
 
 hyperparameter_dict = {
@@ -60,8 +60,9 @@ else:
 def train_classifier(classifier: Classifier, make_data_loader, *, epochs: int = 5, batch_size: int = 32, save: bool = False, track: bool = False):
     schedule = {
         # epoch : performed change
-        2 : classifier.use_label_hierarchy,
+        1 : classifier.use_label_hierarchy,
     }
+    classifier.use_label_hierarchy()
 
     for epoch in trange(epochs, desc=f"epochs"):
         data_loader_train = make_data_loader.get_data_loader_train(batch_size=batch_size) #, num_workers=4)
@@ -88,6 +89,8 @@ def train_classifier_on_hyperparameters(learning_rate_init=learning_rate_init, g
         "seed_parameter": seed_parameter,
     }
     wandb_kwargs.update({"config":hyperparameter_dict})
+    wandb_kwargs["name"] = f"lr {learning_rate_init:.3f}, gamma{gamma:.4f}"
+
 
     make_data_loader = MakeDataLoader(N_sample=N_sample)
     classifier = Classifier(seed=seed_parameter,
@@ -98,7 +101,7 @@ def train_classifier_on_hyperparameters(learning_rate_init=learning_rate_init, g
                             learning_rate_init=learning_rate_init,
                             weight_loss_sample_variance=weight_loss_sample_variance,
                             evaluation_steps=evaluation_steps,
-                            considered_layers_init=considered_layers_init,
+                            considered_groups=considered_groups,
                            ).to(device)
 
     if N_gpus > 1  and device.type == "cuda":
@@ -127,4 +130,5 @@ def train_classifier_on_random_hyperparameters(learning_rate_init=None, gamma=No
 
 if __name__ == "__main__":
 
-    train_classifier_on_random_hyperparameters(seed_parameter=seed_parameter)
+    train_classifier_on_hyperparameters(seed_parameter=seed_parameter)
+#    train_classifier_on_random_hyperparameters(seed_parameter=seed_parameter)
