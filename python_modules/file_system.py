@@ -4,7 +4,8 @@
 import os
 
 #root = "/drive/MyDrive/FHNW/galaxy_generator/"
-root = "/home/shackste/galaxy-generator/data/"
+#root = "/home/shackste/galaxy-generator/data/"
+root = "/mnt/data/shackste/galaxy-generator/data/"
 
 ## download from https://www.kaggle.com/c/galaxy-zoo-the-galaxy-challenge/data
 file_galaxy_images = root + "galaxyzoo_data_cropped_nonnormalized.npy"

@@ -4,7 +4,7 @@
 import numpy as np
 from pandas import read_csv
 import  torch
-from torchvision.transforms import Compose, CenterCrop, ToTensor, RandomAffine, Resize, RandomVerticalFlip, RandomHorizontalFlip, RandomErasing, ToPILImage
+from torchvision.transforms import Compose, CenterCrop, ToTensor, RandomAffine, Resize, RandomVerticalFlip, RandomHorizontalFlip
 from torch.utils.data import DataLoader, Dataset, Subset
 from sklearn.model_selection import train_test_split
 from glob import glob
@@ -44,7 +44,7 @@ class DataSet(Dataset):
             self.data.append([file, label])
 
         self.augment = Compose([
-            RandomVerticalFlip(),
+#            RandomVerticalFlip(),
             RandomHorizontalFlip(),
             RandomAffine((0, 360), (0.01,) * 2),  # rotation, -4 to 4 translation
             CenterCrop(207),

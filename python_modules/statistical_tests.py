@@ -10,7 +10,7 @@ from photutils.background import Background2D, MedianBackground, SExtractorBackg
 from cv2 import Laplacian
 
 from photutils import detect_threshold, detect_sources
-from statmorph import source_morphology
+#from statmorph import source_morphology
 
 
 #########################################
@@ -119,8 +119,8 @@ def compute_divergence_total_intensity_statistics(images1: torch.Tensor, images2
     """ compute and return KL distance of distribution of log(total intensities)
     in different color bands of two sets of images
     """
-    images1 = images1.numpy()
-    images2 = images2.numpy()
+    images1 = images1.cpu().numpy()
+    images2 = images2.cpu().numpy()
     a, b = map(gather_total_intensity_data, [images1, images2])
     a, b = np.log10([a,b])
     range = [range] * len(images1[0]) ## same range for each colorband
@@ -167,7 +167,7 @@ def get_image_pair_residual_statistics(images: torch.Tensor, N=32) -> np.array:
 
 def compute_blurriness_metric(image_channel: torch.Tensor) -> float:
     """ compute bluriness metric as variance of laplacian  """
-    lapl = Laplacian(image_channel.numpy(), 5)
+    lapl = Laplacian(image_channel.cpu().numpy(), 5)
     bluriness = lapl.var()
     return bluriness
 
@@ -176,7 +176,7 @@ grayscale_weights = torch.tensor([0.299, 0.587, 0.114]) ## RGB weights for eye-p
 
 
 def RGB2grayscale(image: torch.Tensor) -> torch.Tensor:
-    scaled_image = torch.einsum("i,ijk->jk", grayscale_weights, image)
+    scaled_image = torch.einsum("i,ijk->jk", grayscale_weights, image.cpu())
     return scaled_image
 
 

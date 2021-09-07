@@ -1,7 +1,8 @@
 import os
 import wandb
 
-os.system("wandb login")
+#os.system("wandb login")
+wandb.login(key="834835ffb309d5b1618c537d20d23794b271a208")
 
 ## general usage
 #wandb.init(**kwargs) ## initialize tracking

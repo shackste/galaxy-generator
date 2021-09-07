@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from torch.nn import Sequential, Linear, Conv2d, MaxPool2d, Dropout, ReLU, Flatten, LeakyReLU
 import torchvision.models as models
-from torchvision.transforms import Compose, FiveCrop, Lambda, RandomErasing
+from torchvision.transforms import Compose, FiveCrop, Lambda
 from torchvision.transforms.functional import rotate, hflip
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR, MultiStepLR
@@ -96,7 +96,6 @@ class ImageClassifier(ClassifierBase):
             FiveCrop(45),
             Lambda(lambda crops: torch.cat([rotate(crop, ang) for crop, ang in zip(crops, (0, 90, 270, 180))], 0)),
         ])
-        self.random_eraser = RandomErasing(scale=(0.01, 0.2))
         self.N_augmentations = 16
         self.N_conv_outputs = 512
 
@@ -140,8 +139,6 @@ class ImageClassifier(ClassifierBase):
         self.make_labels_hierarchical = True
         
     def forward(self, x: torch.Tensor, train=False) -> torch.Tensor:
-        if train and False:
-            x = self.random_eraser(x)
         x = self.augment(x)
         x = self.conv(x)
 

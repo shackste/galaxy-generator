@@ -1,0 +1,5 @@
+#!/bin/bash
+
+## this script installs all required dependencies, assuming that you use the docker ufoym/deepo:pytorch
+
+pip install astropy
