@@ -136,3 +136,7 @@ dmypy.json
 data/
 
 wandb
+
+
+# backup of modified files
+*~

@@ -4,4 +4,4 @@
 
 apt-get update && apt-get install -y python3-opencv
 
-pip install astropy photutils opencv-python wandb
+pip install ipython astropy photutils opencv-python wandb

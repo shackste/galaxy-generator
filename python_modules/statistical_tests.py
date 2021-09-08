@@ -238,7 +238,7 @@ def get_segmentation_map(image: torch.Tensor,
         return segmap, mask
 
 def remove_background(image: torch.Tensor,
-                      box_size=4, filter_size=3,
+                      box_size: int = 4, filter_size: int = 3,
                       mask=None, pass_background=False) -> torch.Tensor:
     """ remove background noise from given image """
     sigma_clip = SigmaClip(sigma=3.)

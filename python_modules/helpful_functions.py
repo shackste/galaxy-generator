@@ -45,7 +45,7 @@ def summarize(network: torch.nn.Module, input_size=input_size, graph=False, labe
 ## investigate results ##
 #########################
 
-def write_RGB_image(*, image=None, filename=None) -> None:
+def write_RGB_image(*, image: np.array = None, filename : str = None) -> None:
     """ write RGB image to file """
     assert image is not None, "provide image"
     assert filename is not None, "provide filename"
@@ -54,19 +54,19 @@ def write_RGB_image(*, image=None, filename=None) -> None:
     imwrite(folder_results+filename, image)
 
 
-def write_generated_galaxy_images_iteration(*, iteration=None, images=None) -> None:
+def write_generated_galaxy_images_iteration(*, iteration: int = None, images: torch.Tensor = None, width: int = 8, height: int = 8) -> None:
     """ write set of galaxy images to file """
     assert type(iteration) is int, "provide iteration as integer"
     assert images is not None, "provide generated galaxy images"
+    assert width*height == len(images), "width and height need to fit number of images, N = width*height"
 
-    w, h = 8, 8  ## !! w*h <= batch_size
     d = image_dim
 
-    flat_image = np.empty((3, w*d, h*d))
+    flat_image = np.empty((3, height*d, width*d))
     k = 0
-    for iw in range(w):
-        for ih in range(h):
-            flat_image[:,iw*d:(iw+1)*d, ih*d:(ih+1)*d] = images[k]
+    for iw in range(width):
+        for ih in range(height):
+            flat_image[:, ih*d:(ih+1)*d,iw*d:(iw+1)*d] = images[k]
             k += 1
     flat_image = (flat_image*255).astype("uint8")
     write_RGB_image(image=flat_image, filename=f"samples_iter{iteration}.png")
