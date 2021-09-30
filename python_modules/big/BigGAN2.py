@@ -240,6 +240,7 @@ class Generator(NeuralNetwork):
   # G.shared in this forward function, it would be harder to handle.
   def forward(self, z, y):
     # If hierarchical, concatenate zs and ys
+    y = self.transform_labels(y)
     if self.hier:
       zs = torch.split(z, self.z_chunk_size, 1)
       z = zs[0]
@@ -259,7 +260,8 @@ class Generator(NeuralNetwork):
         h = block(h, ys[index])
         
     # Apply batchnorm-relu-conv-tanh at output
-    return torch.tanh(self.output_layer(h))
+    return torch.sigmoid(self.output_layer(h))
+#    return torch.tanh(self.output_layer(h))
 
 
 # Discriminator architecture, same paradigm as G's above
@@ -419,7 +421,9 @@ class Discriminator(NeuralNetwork):
     # Get initial class-unconditional output
     out = self.linear(h)
     # Get projection of final featureset onto class vectors and add to evidence
+    y = self.transform_labels(y)
     out = out + torch.sum(y * h, 1, keepdim=True)
+#    out = out + torch.sum(self.embed(y) * h, 1, keepdim=True)  ## use y = torch.tensor(0)
     return out
 
 # Parallelized G_D to minimize cross-gpu communication

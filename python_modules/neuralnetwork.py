@@ -29,7 +29,13 @@ class NeuralNetwork(torch.nn.Module):
     def get_total_number_parameters(self) -> float:
         """ return total number of parameters """
         return sum([p.numel() for p in classifier.parameters()])
-        
+
+    def zero_grad(self):
+        """ faster implementation of zero_grad """
+        for p in self.parameters():
+            p.grad = None
+#        self.zero_grad(set_to_none=True)
+
 
 def update_networks_on_loss(loss: torch.Tensor, *networks) -> None:
     if not loss:

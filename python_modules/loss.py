@@ -22,6 +22,7 @@ bce = BCELoss()
 L1 = L1Loss(reduction="sum")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#device = torch.device("cpu")
 
 def get_sample_variance(sample: torch.Tensor) -> torch.Tensor:
     """ calculate variance of sample via MSE from mean"""
@@ -32,7 +33,7 @@ def get_sample_variance(sample: torch.Tensor) -> torch.Tensor:
 def loss_sample_variance(features: torch.Tensor, threshold=0.001) -> torch.Tensor:
     """ calculate loss of sample variance as mean squared error from average """
     sample_variance = get_sample_variance(features)
-    loss = torch.max(torch.tensor(0).to(device), threshold - sample_variance)
+    loss = torch.max(torch.tensor(0, device=device), threshold - sample_variance)
     return loss
     
 def plot_losses(losses: list, steps: int, iteration: int, label=None) -> None:

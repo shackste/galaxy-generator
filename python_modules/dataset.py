@@ -78,10 +78,13 @@ class DataSet(Dataset):
         return img, label
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#device = torch.device("cpu")
 
 class MakeDataLoader:
-    def __init__(self, test_size=0.1, random_state=2, N_sample=-1):
+    def __init__(self, test_size=0.1, random_state=2, N_sample=-1, augmented=True):
         self.dataset = DataSet()
+        if not augmented:
+            self.dataset.test_data = True
         train_idx, test_idx = train_test_split(list(range(len(self.dataset))), test_size=test_size, random_state=random_state)
         valid_idx, test_idx = train_test_split(list(range(len(test_idx))), test_size=0.5, random_state=random_state+1)
 
@@ -97,11 +100,11 @@ class MakeDataLoader:
     def get_data_loader_full(self, batch_size=64, shuffle=True, **kwargs) -> DataLoader:
         return DataLoader(self.dataset, batch_size=batch_size, shuffle=shuffle, drop_last=True, collate_fn=self.collate_fn, **kwargs)
 
-    def get_data_loader_train(self, batch_size=64, **kwargs) -> DataLoader:
-        return DataLoader(self.dataset_train, batch_size=batch_size, shuffle=True, drop_last=True, collate_fn=self.collate_fn, **kwargs)
+    def get_data_loader_train(self, batch_size=64, shuffle=True, **kwargs) -> DataLoader:
+        return DataLoader(self.dataset_train, batch_size=batch_size, shuffle=shuffle, drop_last=True, collate_fn=self.collate_fn, **kwargs)
 
-    def get_data_loader_test(self, batch_size=64, **kwargs) -> DataLoader:
-        return DataLoader(self.dataset_test, batch_size=batch_size, shuffle=True, drop_last=True, collate_fn=self.collate_fn, **kwargs)
+    def get_data_loader_test(self, batch_size=64, shuffle=True, **kwargs) -> DataLoader:
+        return DataLoader(self.dataset_test, batch_size=batch_size, shuffle=shuffle, drop_last=True, collate_fn=self.collate_fn, **kwargs)
 
-    def get_data_loader_valid(self, batch_size=64, **kwargs) -> DataLoader:
-        return DataLoader(self.dataset_valid, batch_size=batch_size, shuffle=True, drop_last=True, collate_fn=self.collate_fn, **kwargs)
+    def get_data_loader_valid(self, batch_size=64, shuffle=True, **kwargs) -> DataLoader:
+        return DataLoader(self.dataset_valid, batch_size=batch_size, shuffle=shuffle, drop_last=True, collate_fn=self.collate_fn, **kwargs)

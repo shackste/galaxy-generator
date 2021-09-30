@@ -54,7 +54,7 @@ def write_RGB_image(*, image: np.array = None, filename : str = None) -> None:
     imwrite(folder_results+filename, image)
 
 
-def write_generated_galaxy_images_iteration(*, iteration: int = None, images: torch.Tensor = None, width: int = 8, height: int = 8) -> None:
+def write_generated_galaxy_images_iteration(*, iteration: int = None, images: torch.Tensor = None, width: int = 8, height: int = 8, file_prefix="generated_samples") -> None:
     """ write set of galaxy images to file """
     assert type(iteration) is int, "provide iteration as integer"
     assert images is not None, "provide generated galaxy images"
@@ -69,5 +69,5 @@ def write_generated_galaxy_images_iteration(*, iteration: int = None, images: to
             flat_image[:, ih*d:(ih+1)*d,iw*d:(iw+1)*d] = images[k]
             k += 1
     flat_image = (flat_image*255).astype("uint8")
-    write_RGB_image(image=flat_image, filename=f"samples_iter{iteration}.png")
+    write_RGB_image(image=flat_image, filename=f"{file_prefix}_iter{iteration}.png")
 

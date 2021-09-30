@@ -109,6 +109,7 @@ label_info = { # (name, next group), 0 == end
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#device = torch.device("cpu")
 
 
 class ConsiderGroups:
