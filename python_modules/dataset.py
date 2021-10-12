@@ -80,6 +80,7 @@ class DataSet(Dataset):
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #device = torch.device("cpu")
 
+
 class MakeDataLoader:
     def __init__(self, test_size=0.1, random_state=2, N_sample=-1, augmented=True):
         self.dataset = DataSet()
@@ -94,17 +95,14 @@ class MakeDataLoader:
         self.dataset_test = Subset(self.dataset, test_idx)
         self.dataset_test.test_data = True
         
-        self.collate_fn = lambda x: list(map(lambda o: o.to(device), default_collate(x)))
-
-
     def get_data_loader_full(self, batch_size=64, shuffle=True, **kwargs) -> DataLoader:
-        return DataLoader(self.dataset, batch_size=batch_size, shuffle=shuffle, drop_last=True, collate_fn=self.collate_fn, **kwargs)
+        return DataLoader(self.dataset, batch_size=batch_size, shuffle=shuffle, drop_last=True, pin_memory=device.type=="gpu", **kwargs)
 
     def get_data_loader_train(self, batch_size=64, shuffle=True, **kwargs) -> DataLoader:
-        return DataLoader(self.dataset_train, batch_size=batch_size, shuffle=shuffle, drop_last=True, collate_fn=self.collate_fn, **kwargs)
+        return DataLoader(self.dataset_train, batch_size=batch_size, shuffle=shuffle, drop_last=True, pin_memory=device.type=="gpu", **kwargs)
 
-    def get_data_loader_test(self, batch_size=64, shuffle=True, **kwargs) -> DataLoader:
-        return DataLoader(self.dataset_test, batch_size=batch_size, shuffle=shuffle, drop_last=True, collate_fn=self.collate_fn, **kwargs)
+    def get_data_loader_test(self, batch_size=64, shuffle=False, **kwargs) -> DataLoader:
+        return DataLoader(self.dataset_test, batch_size=batch_size, shuffle=shuffle, drop_last=True, pin_memory=device.type=="gpu", **kwargs)
 
-    def get_data_loader_valid(self, batch_size=64, shuffle=True, **kwargs) -> DataLoader:
-        return DataLoader(self.dataset_valid, batch_size=batch_size, shuffle=shuffle, drop_last=True, collate_fn=self.collate_fn, **kwargs)
+    def get_data_loader_valid(self, batch_size=64, shuffle=False, **kwargs) -> DataLoader:
+        return DataLoader(self.dataset_valid, batch_size=batch_size, shuffle=shuffle, drop_last=True, pin_memory=device.type=="gpu", **kwargs)

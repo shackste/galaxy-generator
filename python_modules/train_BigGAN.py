@@ -26,14 +26,14 @@ latent_dim = 128
 
 N_sample = -1 #64*2  # 2048 * 2
 
-epochs = 2000
-batch_size = 8  # 1 * N_sample
+epochs = 250
+batch_size = 64  # 1 * N_sample
 full_batch_size = 64
 steps = full_batch_size // batch_size
 N_dis_train = 2  # How many times discriminator is trained before generator
 
 epochs_evaluation = 1  # number of epochs after which to evaluate
-num_workers = 0
+num_workers = 24
 
 track = True # if True, track evaluation measures with wandb
 plot_images = True
@@ -80,7 +80,7 @@ def train_discriminator(images: torch.Tensor,
     latent = generate_latent(labels.shape[0], latent_dim, sigma=False)
     labels_fake = generate_labels(labels.shape[0])
 
-    labels_fake[:] = 0  # !!!
+#    labels_fake[:] = 0  # !!!
 
     generated_images = generator(latent, labels_fake)
 
@@ -99,7 +99,7 @@ def train_generator(batch_size: int = batch_size,
     latent = generate_latent(batch_size, latent_dim, sigma=False)
     labels_fake = generate_labels(batch_size)
 
-    labels_fake[:] = 0  # !!!
+#    labels_fake[:] = 0  # !!!
 
     generated_images = generator(latent, labels_fake)
     g_loss_dis, g_loss_class = compute_loss_generator(generated_images, labels_fake)
@@ -113,14 +113,16 @@ def train_generator(batch_size: int = batch_size,
 
 
 def train_epoch_long_steps(data_loader, epoch: int=0, steps: int = steps):
-    """ train generator and discriminator on batch sizes that exceed available pin_memory
+    """ train generator and discriminator on batch sizes that exceed available memory
         by collecting the backward loss over several iterations
     """
     generator.train()
     discriminator.train()
     for i, (images, labels) in enumerate(tqdm(data_loader, desc=f"epoch {epoch}")):
-
-        labels[:] = 0 # !!!
+        images = images.to(device)
+        labels = labels.to(device)
+        
+#        labels[:] = 0 # !!!
 
         optimizer_step = not (i+1) % steps
         train_discriminator(images, labels, optimizer_step=optimizer_step)
@@ -165,8 +167,11 @@ def train_epoch(data_loader, epoch: int=0):
     discriminator.train()
     i = 0
     for images, labels in tqdm(data_loader, desc=f"epoch {epoch}"):
+        images = images.to(device)
+        labels = labels.to(device)
 
-        labels[:] = 0  # !!!
+                           
+#        labels[:] = 0  # !!!
 
         train_generator = i % N_dis_train if N_dis_train > 1 else True
         train_step(images, labels, train_generator=train_generator)
@@ -250,9 +255,14 @@ def evaluate(data_loader_train: DataLoader,
     """ evaluate BigGAN over full validation dataset """
     full_logs = collections.Counter()
     for i, ((images_train, labels_train), (images_valid, labels_valid)) in enumerate(zip(data_loader_train, data_loader_valid)):
+        images_train = images_train.to(device)
+        labels_train = labels_train.to(device)
+        images_valid = images_valid.to(device)
+        labels_valid = labels_valid.to(device)
 
-        labels_valid[:] = 0 # !!!
-        labels_train[:] = 0 # !!!
+        
+#        labels_valid[:] = 0 # !!!
+#        labels_train[:] = 0 # !!!
 
         logs = evaluate_batch(images_train, labels_train, images_valid, labels_valid, plot_images=i==0 and plot_images, iteration=iteration)
         full_logs.update(logs)
@@ -288,7 +298,7 @@ def evaluate_batch(images_train: torch.Tensor,
         write_generated_galaxy_images_iteration(iteration=0, images=images_train.cpu(), width=width, height=len(generated_images)//width, file_prefix="original_sample")
 
     d_loss_real_train, d_loss_fake, accuracy_real_train, accuracy_fake = compute_loss_discriminator(images_train, labels_train, generated_images, labels_fake, accuracy=True)
-    d_loss_real_valid, d_loss_fake, accuracy_real_valid, accuracy_fake  = compute_loss_discriminator(images_valid, labels_valid, generated_images, labels_fake, accuracy=True)
+    d_loss_real_valid, d_loss_fake, accuracy_real_valid, accuracy_fake = compute_loss_discriminator(images_valid, labels_valid, generated_images, labels_fake, accuracy=True)
 
     g_loss_dis, g_loss_class, accuracy_gen_dis, accuracy_gen_class = compute_loss_generator(generated_images, labels_fake, accuracy=True)
 
@@ -331,6 +341,8 @@ def train_biggan_tracked(*args, wandb_kwargs: dict = wandb_kwargs, **kwargs):
 
 
 if __name__ == "__main__":
+    if num_workers > 0 and False:
+        torch.multiprocessing.set_start_method('spawn', force=True)
     if track:
         train_biggan_tracked(augmented=augmented)
     else:

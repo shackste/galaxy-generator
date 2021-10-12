@@ -19,6 +19,7 @@ from accuracy_measures import measure_accuracy_classifier
 from file_system import folder_results
 from losses import Losses, Accuracies
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class ClassifierBase(NeuralNetwork):
@@ -186,6 +187,8 @@ class ImageClassifier(ClassifierBase):
                     track: bool = False,
                    ) -> None:
         for images, labels in tqdm(data_loader_train, desc=f"epoch {self.epoch}"):
+            images = images.to(device)
+            labels = labels.to(device)
             loss = self.train_step(images, labels)
             if np.isnan(loss):
                 from pdb import set_trace
@@ -202,6 +205,8 @@ class ImageClassifier(ClassifierBase):
                 for group, acc in accs_train.items():
                     getattr(self, f"accuracies_Q{group}_train").append(self.iteration, acc)
                 for images, labels in data_loader_valid:
+                    images = images.to(device)
+                    labels = labels.to(device)
                     break
                 loss_regression_valid, loss_variance_valid, accs_valid, variance_valid = self.evaluate_batch(images, labels)
                 loss_valid = loss_regression_valid + loss_variance_valid*self.weight_loss_sample_variance
@@ -239,6 +244,8 @@ class ImageClassifier(ClassifierBase):
             accs = Counter({group:0 for group in range(1,12)})
             variance = 0
             for N_test, (images, labels) in enumerate(data_loader):
+                images = images.to(device)
+                labels = labels.to(device)
                 if N_test >= self.N_batches_test:
                     break
                 loss_, accs_, variance_ = self.evaluate_batch(images, labels)

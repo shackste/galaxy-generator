@@ -7,10 +7,10 @@ from functools import partial
 from image_classifier import ImageClassifier as Classifier
 from dataset import MakeDataLoader
 
-epochs = 500
+epochs = 3000
 reload = False ## if True, continue with previously trained parameters
 
-considered_groups = list(range(1,8))
+considered_groups = list(range(1,12))
 
 # setting used by Dielemann et al 2015
 #optimizer = SGD
@@ -23,12 +23,13 @@ sample_variance_threshold = 0.002
 seed_parameter = 7
 weight_loss_sample_variance = 0 #200.
 
-batch_size = 32
+batch_size = 64
 N_batches = 1
 N_sample = -1 #batch_size * N_batches
 evaluation_steps = 250 # N_batches*10
+num_workers = 24
 
-track = False
+track = True
 
 
 hyperparameter_dict = {
@@ -40,7 +41,7 @@ hyperparameter_dict = {
 wandb_kwargs = {
     "project" : "galaxy classifier", ## top level identifier
     "group" : "parameter search", ## secondary identifier
-    "job_type" : "training", ## third level identifier
+    "job_type" : "long training", ## third level identifier
     "tags" : ["training", "parameter search"],  ## tags for organizing tasks
     "name" : "test", ## bottom level identifier, label of graph in UI
     "config" : hyperparameter_dict, ## dictionary of used hyperparameters
@@ -64,10 +65,9 @@ def train_classifier(classifier: Classifier, make_data_loader, *, epochs: int = 
     }
     classifier.use_label_hierarchy()
 
+    data_loader_train = make_data_loader.get_data_loader_train(batch_size=batch_size, num_workers=num_workers)
+    data_loader_valid = make_data_loader.get_data_loader_valid(batch_size=batch_size, num_workers=num_workers)
     for epoch in trange(epochs, desc=f"epochs"):
-        data_loader_train = make_data_loader.get_data_loader_train(batch_size=batch_size) #, num_workers=4)
-        data_loader_valid = make_data_loader.get_data_loader_valid(batch_size=batch_size) #, num_workers=4)
-
         if classifier.epoch in schedule.keys():
             schedule[classifier.epoch]()
         classifier.train_epoch(data_loader_train, data_loader_valid, track=track)
