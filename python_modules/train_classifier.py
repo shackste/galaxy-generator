@@ -26,7 +26,8 @@ weight_loss_sample_variance = 0 #200.
 batch_size = 64
 N_batches = 1
 N_sample = -1 #batch_size * N_batches
-evaluation_steps = 250 # N_batches*10
+evaluation_steps = 865 #250 # N_batches*10
+N_batches_test = 90000 # number of batches considered for evaluation
 num_workers = 24
 
 track = True
@@ -102,6 +103,7 @@ def train_classifier_on_hyperparameters(learning_rate_init=learning_rate_init, g
                             weight_loss_sample_variance=weight_loss_sample_variance,
                             evaluation_steps=evaluation_steps,
                             considered_groups=considered_groups,
+                            N_batches_test=N_batches_test,
                            ).to(device)
 
     if N_gpus > 1  and device.type == "cuda":

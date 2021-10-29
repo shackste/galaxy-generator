@@ -49,8 +49,8 @@ class ImageClassifier(ClassifierBase):
                  considered_groups = list(range(12)),  ## group layers to be considered from start
                  sample_variance_threshold = 0.002,
                  weight_loss_sample_variance = 0, # 10.
-                 evaluation_steps = 250 # number of batches between loss tracking
-
+                 evaluation_steps = 250, # number of batches between loss tracking
+                 N_batches_test = 1, # number of batches considered for evaluation
                 ):
         super(ImageClassifier, self).__init__(considered_groups=considered_groups)
         if seed is not None:
@@ -105,7 +105,7 @@ class ImageClassifier(ClassifierBase):
         self.scheduler = MultiStepLR(self.optimizer, milestones=[292, 373], gamma=gamma)
 
         self.make_labels_hierarchical = False # if True, output probabilities are renormalized to fit the hierarchical label structure
-        self.N_batches_test = 1
+        self.N_batches_test = N_batches_test
         self.evaluation_steps = evaluation_steps # number of batches between loss tracking
         self.weight_loss_sample_variance = weight_loss_sample_variance
         self.sample_variance_threshold = sample_variance_threshold
@@ -196,7 +196,7 @@ class ImageClassifier(ClassifierBase):
                 loss = self.train_step(images, labels)
                 raise Exception("loss is NaN")
             if not self.iteration % self.evaluation_steps - 1:
-                loss_regression_train, loss_variance_train, accs_train, variance_train = self.evaluate_batch(images, labels, print_labels=True)
+                loss_regression_train, loss_variance_train, accs_train, variance_train = self.evaluate_batch(images, labels, print_labels=False)
                 loss_train = loss_regression_train + loss_variance_train*self.weight_loss_sample_variance
                 self.losses_regression.append(self.iteration, loss_regression_train)
                 self.losses_variance.append(self.iteration, loss_variance_train)
@@ -252,10 +252,10 @@ class ImageClassifier(ClassifierBase):
                 loss += loss_
                 accs.update(accs_)
                 variance += varance_
-            loss /= self.N_batches_test
-            variance /= self.N_batches_test
+            loss /= N_test + 1
+            variance /= N_test + 1
             for group in accs.keys():
-                accs[group] /= self.N_batches_test
+                accs[group] /= N_test + 1
         return loss, accs, variance
 
         

@@ -37,7 +37,8 @@ num_workers = 24
 
 track = True # if True, track evaluation measures with wandb
 plot_images = True
-conditional = False  # if True, generator is trained to produce images according to the input labels
+use_label = True  # if True, use labels in generator and discriminator
+conditional = True  # if True, generator is trained together with pretrained Classifier to produce images according to the input labels
 augmented = True
 reload = False  # if True, continue training
 
@@ -51,7 +52,7 @@ hyperparameter_dict = {
 wandb_kwargs = {
     "project" : "galaxy generator",  # top level identifier
     "group" : "probe GANs",  # secondary identifier
-    "job_type" : "BigGAN",  # third level identifier
+    "job_type" : use_label*"conditional" + "BigGAN" + conditional*" & Classifier",  # third level identifier
     "tags" : ["training", "parameter search"],  # tags for organizing tasks
     "name" : f"lr_G {lr_generator}, lr_D {lr_discriminator}",  # bottom level identifier, label of graph in UI
     "config" : hyperparameter_dict, # dictionary of used hyperparameters
@@ -64,7 +65,7 @@ generator = Generator(dim_z=latent_dim, labels_dim=labels_dim, G_lr=lr_generator
 discriminator = Discriminator(labels_dim=labels_dim, D_lr=lr_discriminator).to(device)
 if reload:
     generator.load()
-#    discriminator.load()
+    discriminator.load()
 if conditional:
     classifier = ImageClassifier().to(device)
     classifier.load()  # use pretrained classifier
@@ -80,7 +81,8 @@ def train_discriminator(images: torch.Tensor,
     latent = generate_latent(labels.shape[0], latent_dim, sigma=False)
     labels_fake = generate_labels(labels.shape[0])
 
-#    labels_fake[:] = 0  # !!!
+    if not use_label:
+        labels_fake[:] = 0
 
     generated_images = generator(latent, labels_fake)
 
@@ -99,7 +101,8 @@ def train_generator(batch_size: int = batch_size,
     latent = generate_latent(batch_size, latent_dim, sigma=False)
     labels_fake = generate_labels(batch_size)
 
-#    labels_fake[:] = 0  # !!!
+    if not use_label:
+        labels_fake[:] = 0
 
     generated_images = generator(latent, labels_fake)
     g_loss_dis, g_loss_class = compute_loss_generator(generated_images, labels_fake)
@@ -122,7 +125,8 @@ def train_epoch_long_steps(data_loader, epoch: int=0, steps: int = steps):
         images = images.to(device)
         labels = labels.to(device)
         
-#        labels[:] = 0 # !!!
+        if not use_label:
+            labels[:] = 0
 
         optimizer_step = not (i+1) % steps
         train_discriminator(images, labels, optimizer_step=optimizer_step)
@@ -171,7 +175,8 @@ def train_epoch(data_loader, epoch: int=0):
         labels = labels.to(device)
 
                            
-#        labels[:] = 0  # !!!
+        if not use_label:
+            labels[:] = 0
 
         train_generator = i % N_dis_train if N_dis_train > 1 else True
         train_step(images, labels, train_generator=train_generator)
@@ -233,7 +238,7 @@ def compute_loss_generator(generated_images: torch.Tensor,
     prediction = discriminator(generated_images, labels.detach()).view(-1)
     g_loss_dis = generator_loss(prediction)
     if not conditional:
-        g_loss_class = 0
+        g_loss_class = torch.tensor(0)
     else:
         labels_prediction = classifier.predict(generated_images)
         g_loss_class = loss_class(labels_prediction[:, considered_label_indices], labels[:, considered_label_indices])
@@ -242,7 +247,7 @@ def compute_loss_generator(generated_images: torch.Tensor,
 
 #    print("pred gen", prediction)
     accuracy_dis = torch.sum(prediction > 0) / prediction.shape[0]
-    accuracy_class = 0
+    accuracy_class = torch.tensor(0)
 
     return g_loss_dis, g_loss_class, accuracy_dis, accuracy_class
 
@@ -261,8 +266,9 @@ def evaluate(data_loader_train: DataLoader,
         labels_valid = labels_valid.to(device)
 
         
-#        labels_valid[:] = 0 # !!!
-#        labels_train[:] = 0 # !!!
+        if not use_label:
+            labels_valid[:] = 0
+            labels_train[:] = 0
 
         logs = evaluate_batch(images_train, labels_train, images_valid, labels_valid, plot_images=i==0 and plot_images, iteration=iteration)
         full_logs.update(logs)
