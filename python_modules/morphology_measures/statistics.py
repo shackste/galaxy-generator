@@ -1,75 +1,17 @@
 # Here we put procedures for the statistical investigation and comparison
 # of morphological properties of sets of galaxy images
 import numpy as np
-import types
-from multiprocessing import Pool
 
 import torch
 from corner import corner
 from chamferdist import ChamferDistance
 
-from statmorph import get_morphology_measures
+from measures import get_morphology_measures_set, Measures, measures_groups
 
 
-measures_groups = {"CAS": ["concentration", "asymmetry", "smoothness", ],
-                   "MID": ["multimode", "intensity", "deviation", ],
-                   "gini-m20": ["m20", "gini", ],
-                   "ellipticity": ["ellipticity_asymmetry", ], }
 
-
-measures_of_interest = [m
-                        for measures in measures_groups.values()
-                        for m in measures]
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-
-# COLLECT DATA FROM IMAGES
-
-
-def collect_morphology_measures(image):
-    """ obtain morphology measures from galaxy image and add to collection.
-        Picklable function for parallel loop
-    """
-    morph = get_morphology_measures(image)
-    return morph
-
-
-def get_morphology_measures_set_parallel(set: types.GeneratorType,
-                                         measures_of_interest: list = measures_of_interest,
-                                         N: int = 30):
-    """ obtain morphology measures for a set of galaxy images
-        parallel computation is about 6 times faster on 16 cores
-    """
-    if N > 0:
-        set = [next(set) for i in range(N)]
-    with Pool() as pool:
-        morphs = pool.map(collect_morphology_measures, set)
-    measures = {m: [] for m in measures_of_interest}
-    for morph in morphs:
-        for key, value in measures.items():
-            value.append(getattr(morph, key))
-    return measures
-
-
-def get_morphology_measures_set(set: types.GeneratorType,
-                                measures_of_interest: list = measures_of_interest,
-                                N: int = 30,
-                                ):
-    """ obtain morphology measures for a set of galaxy images """
-    measures = {m: [] for m in measures_of_interest}
-    for i, image in enumerate(set):
-        if i > N:
-            break
-        morph = get_morphology_measures(image)
-        for key, value in measures.items():
-            value.append(getattr(morph, key))
-    return measures
-
-# always use parallel version
-get_morphology_measures_set = get_morphology_measures_set_parallel
-
-
-# STATISTICAL INVESTIGATION --------------------------------
 
 
 
@@ -78,37 +20,7 @@ def plot_corner(*data, **kwargs):
     print(d.shape)
     corner(d, **kwargs)
 
-
-def read_measures(keys: list, measures: dict):
-    """ obtain group of measures from full dict
-
-    Parameter
-    ---------
-    keys: list
-        list of names (str) of measures to be read
-    measures: dict
-        full dict containing all measures
-    """
-    return [measures[k] for k in keys]
-
-
-def read_measures_group(group: str, measures: dict):
-    """ obtain group of measures from full dict
-
-    Parameter
-    ---------
-    group: str
-        name of group of morphology measures.
-        One of "CAS", "MID", "gini-m20", "ellipticity"
-        (keys of measures_groups)
-    measures: dict
-        full dict containing all measures
-    """
-    keys = measures_groups[group]
-    return read_measures(keys, measures)
-
-
-def plot_corner_measures_group(group: str, measures: dict, **kwargs):
+def plot_corner_measures_group(group: str, measures: Measures, **kwargs):
     """ create corner plot of group of measures
 
     Parameter
@@ -120,9 +32,9 @@ def plot_corner_measures_group(group: str, measures: dict, **kwargs):
     measures: dict
         full dict containing all measures
     """
-    labels = [m for m in measures_groups[group]]
-    data = read_measures_group(group, measures)
-    plot_corner(data, labels=labels, **kwargs)
+    data = measures.group(group)
+    labels = data.keys
+    plot_corner(data.numpy(), labels=labels, **kwargs)
 
 
 def compute_distance_point_clouds_chamfer(
@@ -144,29 +56,13 @@ def compute_distance_point_clouds_chamfer(
     dist = chamfer_dist(points_source.to(device), points_target.to(device))
     return dist.detach().cpu().item()
 
-
-def transform_measures_to_points_chamfer(measures: dict):
-    """ transform dict of measures to points needed to compute Chamfer distance
-
-    Parameter
-    ---------
-    measures: dict
-        contains M measures of interest (keys) for N samples (values)
-
-    Output
-    ------
-    measures: torch.Tensor
-        shape(1,N,M)
-
-    """
-    return torch.tensor([measures], requires_grad=False)
+compute_distance_point_clouds = compute_distance_point_clouds_chamfer
 
 
 def compute_distance_measures_group(
         group: str,
-        measures_source: dict,
-        measures_target: dict,
-        mode="chamfer", ):
+        measures_source: Measures,
+        measures_target: Measures):
     """ compute distance between points in group of measures
 
     Parameter
@@ -178,12 +74,53 @@ def compute_distance_measures_group(
     measures: dict
         full dict containing all measures
     """
-    if mode == "chamfer":
-        compute_distance_point_clouds = compute_distance_point_clouds_chamfer
-        transform_measures = transform_measures_to_points_chamfer
-    measures_source = read_measures_group(group, measures_source)
-    measures_target = read_measures_group(group, measures_target)
-    points_source = transform_measures(measures_source)
-    points_target = transform_measures(measures_target)
-    return compute_distance_point_clouds(points_source, points_target)
+    return compute_distance_point_clouds(
+        measures_source.group(group).torch(),
+        measures_target.group(group).torch())
 
+def evaluate_generator(dataloader, generator, latent_dim=128, plot=False, plot_path="~/Pictures/"):
+    """ evaluate galaxy image generator by computing the distance between
+        morphology measures obtained from real images and
+        morphology measures obtained from images generated from same labels.
+        Distance is computed for point clouds for all groups in measures_groups
+
+    Parameters
+    ----------
+    dataloader: torch.DataLoader
+            contains the target dataset
+    generator: torch.Module
+            contains the generator that transforms latent ant label vectors to galaxy images
+    latent_dim: int
+            dimension of latent vector required by generator
+    plot: boolean
+            if True: plot corner plots for all groups
+
+    Output
+    ------
+    distances: dict
+            (chamfer) distance between point clouds of morphological measures for
+            the real dataset and the generated counterparts
+            for all groups in measures_groups
+    """
+    # collect measures from dataset and generator
+    target = Measures()
+    source = Measures()
+    for images, labels in dataloader:
+        measures_target = get_morphology_measures_set(images)
+        latent = torch.randn(len(images), latent_dim)
+        images = generator(latent, labels)
+        measures_generated = get_morphology_measures_set(images)
+        target += measures_target
+        source += measures_generated
+
+    # calculate distance between groups of point clouds
+    distances = {}
+    for group in measures_groups.keys():
+        distances[group] = compute_distance_measures_group(group, source, target)
+        if plot:
+            plot_corner_measures_group(group, source)
+            plt.savefig(plot_path + f"measures_source_{group}.png")
+            plot_corner_measures_group(group, target)
+            plt.savefig(plot_path + f"measures_target_{group}.png")
+    distances["total"] = compute_distance_point_clouds(source.torch(), target.torch())
+    return distances

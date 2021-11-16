@@ -89,10 +89,10 @@ class MakeDataLoader:
         train_idx, test_idx = train_test_split(list(range(len(self.dataset))), test_size=test_size, random_state=random_state)
         valid_idx, test_idx = train_test_split(list(range(len(test_idx))), test_size=0.5, random_state=random_state+1)
 
-        indices = torch.randperm(len(train_idx))[:N_sample]
+        indices = torch.randperm(len(valid_idx))[:N_sample]
         self.dataset_train = Subset(self.dataset, np.array(train_idx)[indices])
-        self.dataset_valid = Subset(self.dataset, valid_idx)
-        self.dataset_test = Subset(self.dataset, test_idx)
+        self.dataset_valid = Subset(self.dataset, np.array(valid_idx)[indices])
+        self.dataset_test = Subset(self.dataset, np.array(test_idx)[indices])
         self.dataset_test.test_data = True
         
     def get_data_loader_full(self, batch_size=64, shuffle=True, **kwargs) -> DataLoader:
