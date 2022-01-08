@@ -1,0 +1,15 @@
+batch_size: 64
+n_workers: 16
+
+model_path: models/BigGAN/model_Generator.pth
+
+encoder:                                   # SimCLR encoder parameters
+  path: ./models/galaxy_zoo_encoder.pth  # path to pretrained encoder model
+  base_model: resnet50                     # encoder base model
+  out_dim: 128                             # z-projection size
+
+dataset:            # dataset parameters
+  path: /home/kinakh/Datasets/galaxy-zoo-the-galaxy-challenge/images_training_rev1/  # path to folder with images
+  anno: /home/kinakh/Datasets/galaxy-zoo-the-galaxy-challenge/training_solutions_rev1.csv          # path to file with attribute annotations
+  size: 64
+  n_channels: 3     # number of channels in image
