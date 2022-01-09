@@ -6,6 +6,7 @@ from scipy import linalg
 import torch
 from torch.utils.data import DataLoader, ConcatDataset
 from chamferdist import ChamferDistance
+from geomloss import SamplesLoss
 
 from python_modules.evaluation.resnet_simclr import ResNetSimCLR
 from python_modules.evaluation.fid import get_fid_fn, load_patched_inception_v3
@@ -123,7 +124,10 @@ class Evaluator:
         # compute KID SSL
         kid_ssl = self._compute_kid('simclr')
         print(f'{kid_ssl=}')
-        # compute morphological features
+
+        # geometric distance
+        geom_dist = self._compute_geometric_distance()
+        print(f'{geom_dist=}')
 
     def _get_dl(self) -> DataLoader:
         """Creates infinite dataloader from valid and test sets of images
@@ -145,6 +149,54 @@ class Evaluator:
         ds = ConcatDataset([ds_valid, ds_test])
         dl = infinite_loader(DataLoader(ds, bs, True, num_workers=n_workers, drop_last=True))
         return dl
+
+    @torch.no_grad()
+    def _compute_geometric_distance(self) -> float:
+        """Computes geometric distance between real and generated samples using
+        features computed using SimCLR
+
+        Returns:
+            float: geometric distance
+        """
+
+        loss = SamplesLoss("sinkhorn", p=2, blur=0.05, scaling=0.8, backend="tensorized")
+
+        bs = self._config['batch_size']
+        n_samples = 20_000
+        n_batches = int(n_samples / bs) + 1
+
+        # load dataset
+        path = self._config['dataset']['path']
+        anno = self._config['dataset']['anno']
+        size = self._config['dataset']['size']
+
+        make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=True)
+        ds_val = make_dl.dataset_valid
+        ds_test = make_dl.dataset_test
+        ds = ConcatDataset([ds_test, ds_val])
+        dl = infinite_loader(DataLoader(ds, bs, shuffle=True, drop_last=True))
+
+        embeddings_real = []
+        embeddings_gen = []
+
+        for _ in trange(n_batches):
+            img, lbl = next(dl)
+            img = img.to(self._device)
+            lbl = lbl.to(self._device)
+            latent = torch.randn((bs, self._generator.dim_z)).to(self._device)
+
+            with torch.no_grad():
+                img_gen = self._generator(latent, lbl)
+                h, _ = self._encoder(img)
+                h_gen, _ = self._encoder(img_gen)
+
+            embeddings_real.extend(h.detach().cpu())
+            embeddings_gen.extend(h_gen.detach().cpu())
+
+        embeddings_real = torch.stack(embeddings_real)
+        embeddings_gen = torch.stack(embeddings_gen)
+        distance = loss(embeddings_real, embeddings_gen)
+        return distance.detach().cpu().item()
 
     @torch.no_grad()
     def _compute_kid(self, encoder_type: str = 'simclr') -> float:
