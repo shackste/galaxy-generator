@@ -200,6 +200,7 @@ class Evaluator:
 
             with torch.no_grad():
                 img = self._generator(latent, label)
+                img = (img - 0.5) / 0.5  # renormalize
                 h, _ = self._encoder(img)
                 pred = self._classifier(h)
 
@@ -258,6 +259,7 @@ class Evaluator:
         for _ in trange(n_batches):
             img, lbl = next(dl)
             img = img.to(self._device)
+            img = (img - 0.5) / 0.5  # renormalize image
             lbl = lbl.to(self._device)
             latent = torch.randn((bs, self._generator.dim_z)).to(self._device)
 
@@ -305,6 +307,7 @@ class Evaluator:
         for _ in trange(n_batches):
             img, lbl = next(dl)
             img = img.to(self._device)
+            img = (img - 0.5) / 0.5  # renormalize
 
             lbl = lbl.to(self._device)
             latent = torch.randn((bs, self._generator.dim_z)).to(self._device)
@@ -371,6 +374,7 @@ class Evaluator:
         dist = []
         for _ in trange(n_batches):
             img, label = next(dl)
+            img = (img - 0.5) / 0.5
             label = label.to(self._device)
 
             labels_cat = torch.cat([label, label])
@@ -472,7 +476,6 @@ class Evaluator:
 
         embeddings_real = []
         embeddings_gen = []
-        # real data embeddings
         for _ in trange(n_batches):
             img, lbl = next(dl)
             img = img.to(self._device)
@@ -578,7 +581,7 @@ class Evaluator:
         encoder = encoder.to(self._device).eval()
 
         # load classifier
-        n_lbls = self._config['dataset']['n_out']  # shape of labele
+        n_lbls = self._config['dataset']['n_out']  # shape of labels
         classifier_path = self._config['classifier']['path']
         n_feat = self._config['classifier']['n_features']
 
