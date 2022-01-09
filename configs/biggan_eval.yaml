@@ -12,4 +12,9 @@ dataset:            # dataset parameters
   path: /home/kinakh/Datasets/galaxy-zoo-the-galaxy-challenge/images_training_rev1/  # path to folder with images
   anno: /home/kinakh/Datasets/galaxy-zoo-the-galaxy-challenge/training_solutions_rev1.csv          # path to file with attribute annotations
   size: 64
+  n_out: 37         # number of attributes for each image
   n_channels: 3     # number of channels in image
+
+classifier:                                           # classifier parameters
+  path: ./models/galaxy_zoo_classifier.pth  # path to pretrained classifier model
+  n_features: 2048                                    # number of input features in the classifier model

@@ -1,7 +1,12 @@
+from typing import Dict
+from pathlib import Path
+from pprint import pprint
+
 from tqdm import trange
 import numpy as np
 from sklearn.manifold import TSNE
 from scipy import linalg
+import matplotlib.pyplot as plt
 
 import torch
 from torch.utils.data import DataLoader, ConcatDataset
@@ -9,11 +14,12 @@ from chamferdist import ChamferDistance
 from geomloss import SamplesLoss
 
 from python_modules.evaluation.resnet_simclr import ResNetSimCLR
+from python_modules.evaluation.classifier import GalaxyZooClassifier
 from python_modules.evaluation.fid import get_fid_fn, load_patched_inception_v3
 from python_modules.evaluation.inception_score import inception_score
 from python_modules.evaluation.vgg16 import vgg16
 from python_modules.evaluation.dataset import MakeDataLoader, GANDataset, infinite_loader
-from python_modules.evaluation.utils import get_device, get_config
+from python_modules.evaluation.utils import get_device, get_config, PathOrStr
 
 
 def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
@@ -90,7 +96,18 @@ class Evaluator:
     def __init__(self, config_path: str):
         self._config = get_config(config_path)
         self._device = get_device()
-        self._generator, self._encoder = self._load_model()
+        self._generator, self._encoder, self._classifier = self._load_model()
+
+        self._columns = ['Class1.1', 'Class1.2', 'Class1.3',  # TODO: get real names of the labels
+                         'Class2.1', 'Class2.2',
+                         'Class3.1', 'Class3.2',
+                         'Class4.1', 'Class4.2',
+                         'Class5.1', 'Class5.2', 'Class5.3', 'Class5.4',
+                         'Class6.1', 'Class6.2', 'Class7.1', 'Class7.2',
+                         'Class7.3', 'Class8.1', 'Class8.2', 'Class8.3', 'Class8.4', 'Class8.5', 'Class8.6', 'Class8.7',
+                         'Class9.1', 'Class9.2', 'Class9.3',
+                         'Class10.1', 'Class10.2', 'Class10.3',
+                         'Class11.1', 'Class11.2', 'Class11.3', 'Class11.4', 'Class11.5', 'Class11.6']
 
     def evaluate(self):
         # compute FID score
@@ -129,6 +146,10 @@ class Evaluator:
         geom_dist = self._compute_geometric_distance()
         print(f'{geom_dist=}')
 
+        # attribute control accuracy
+        attr_control_acc = self._attribute_control_accuracy(True)
+        pprint(f'{attr_control_acc=}')
+
     def _get_dl(self) -> DataLoader:
         """Creates infinite dataloader from valid and test sets of images
 
@@ -149,6 +170,61 @@ class Evaluator:
         ds = ConcatDataset([ds_valid, ds_test])
         dl = infinite_loader(DataLoader(ds, bs, True, num_workers=n_workers, drop_last=True))
         return dl
+
+    @torch.no_grad()
+    def _attribute_control_accuracy(self, build_hist: bool = True, out_dir: PathOrStr = './images') -> Dict:
+        """Computes attribute control accuracy
+
+        Args:
+            build_hist: if True, the histogram of differences for each label will be built and saved
+
+            out_dir: path to directory, where to save histogram images
+
+        Returns:
+            Dict: attribute control accuracy for each label
+        """
+
+        n_samples = 50_000
+        bs = self._config['batch_size']
+        n_batches = int(n_samples / bs) + 1
+
+        n_out = self._config['dataset']['n_out']
+        diffs = []
+
+        dl = self._get_dl()
+
+        for _ in trange(n_batches):
+            _, label = next(dl)
+            label = label.to(self._device)
+            latent = torch.randn((bs, self._generator.dim_z)).to(self._device)
+
+            with torch.no_grad():
+                img = self._generator(latent, label)
+                h, _ = self._encoder(img)
+                pred = self._classifier(h)
+
+            diff = (label - pred) ** 2
+            diffs.extend(diff.detach().cpu().numpy())
+
+        diffs = np.array(diffs)
+
+        if build_hist:
+            out_dir = Path(out_dir)
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            for i in range(n_out):
+                column = self._columns[i]
+                plt.figure()
+                plt.title(f'{column}. Attribute control accuracy')
+                plt.hist(diffs[:, i], bins=100)
+                plt.savefig(out_dir / f'{column}.png', dpi=300)
+
+        mean_diffs = np.mean(diffs, axis=0)
+
+        result = {}
+        for i in range(n_out):
+            result[self._columns[i]] = mean_diffs[i]
+        return result
 
     @torch.no_grad()
     def _compute_geometric_distance(self) -> float:
@@ -501,7 +577,17 @@ class Evaluator:
         encoder.load_state_dict(ckpt)
         encoder = encoder.to(self._device).eval()
 
-        return generator, encoder
+        # load classifier
+        n_lbls = self._config['dataset']['n_out']  # shape of labele
+        classifier_path = self._config['classifier']['path']
+        n_feat = self._config['classifier']['n_features']
+
+        classifier = GalaxyZooClassifier(n_feat, n_lbls)
+        ckpt = torch.load(classifier_path, map_location='cpu')
+        classifier.load_state_dict(ckpt)
+        classifier = classifier.to(self._device).eval()
+
+        return generator, encoder, classifier
 
 
 if __name__ == '__main__':
