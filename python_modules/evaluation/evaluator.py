@@ -588,10 +588,3 @@ class Evaluator:
         classifier = classifier.to(self._device).eval()
 
         return generator, encoder, classifier
-
-
-if __name__ == '__main__':
-
-    config_path = './configs/biggan_eval.yaml'
-    evaluator = Evaluator(config_path)
-    evaluator.evaluate()
