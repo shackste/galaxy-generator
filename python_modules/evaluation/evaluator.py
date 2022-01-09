@@ -320,6 +320,7 @@ class Evaluator:
                         img = torch.nn.functional.interpolate(img, size=(299, 299), mode='bicubic')
 
                     img_gen = torch.nn.functional.interpolate(img_gen, size=(299, 299), mode='bicubic')
+                    img_gen = (img_gen - 0.5) / 0.5
 
                     h = encoder(img)[0].flatten(start_dim=1)
                     h_gen = encoder(img_gen)[0].flatten(start_dim=1)
@@ -373,8 +374,7 @@ class Evaluator:
 
         dist = []
         for _ in trange(n_batches):
-            img, label = next(dl)
-            img = (img - 0.5) / 0.5
+            _, label = next(dl)
             label = label.to(self._device)
 
             labels_cat = torch.cat([label, label])
@@ -387,6 +387,7 @@ class Evaluator:
 
             with torch.no_grad():
                 img = self._generator(torch.cat([zt0, zt1]), labels_cat)
+                img = (img - 0.5) / 0.5
 
                 if encoder_type == 'simclr':
                     h, _ = encoder(img)
