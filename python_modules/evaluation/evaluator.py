@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader, ConcatDataset
 from chamferdist import ChamferDistance
 from geomloss import SamplesLoss
 
+from python_modules.big.BigGAN2 import Generator
 from python_modules.evaluation.resnet_simclr import ResNetSimCLR
 from python_modules.evaluation.classifier import GalaxyZooClassifier
 from python_modules.evaluation.fid import get_fid_fn, load_patched_inception_v3
@@ -482,8 +483,10 @@ class Evaluator:
             img = img.to(self._device)
             img = (img - 0.5) / 0.5  # renormalize
 
+            s = img.shape[0]
+
             lbl = lbl.to(self._device)
-            latent = torch.randn((bs, self._generator.dim_z)).to(self._device)
+            latent = torch.randn((s, self._generator.dim_z)).to(self._device)
 
             with torch.no_grad():
                 img_gen = self._generator(latent, lbl)
@@ -567,8 +570,9 @@ class Evaluator:
     def _load_model(self):
         # load generator
         path_model = self._config['model_path']
-        generator = torch.load(path_model)
-        generator = generator.to(self._device).eval()
+        generator_ckpt = torch.load(path_model)
+        generator = Generator().eval().to(self._device)
+        generator.load_state_dict(generator_ckpt)
 
         # load encoder
         encoder_path = self._config['encoder']['path']
