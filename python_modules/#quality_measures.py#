@@ -1,0 +1,24 @@
+
+
+def compute_fid_score(images):
+    """ compute FID score for given set of generated images """
+
+
+def compute_ssl_ppl_score(images):
+    """ compute SSL PPL score for given set of generated images """
+
+    
+def compute_vgg_ppl_score(images):
+    """ compute VGG_PPL score for given set of generated images """
+
+
+def compute_kid_score(images):
+    """ compute KID score for given set of generated images """
+
+
+def compute_kid_ssl_score(images):
+    """ compute KID SSL score for given set of generated images """
+
+
+
+    

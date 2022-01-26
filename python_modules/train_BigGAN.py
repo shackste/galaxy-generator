@@ -1,12 +1,13 @@
 from functools import partial
 import collections
 import json
+import argparse
 
 from tqdm import trange, tqdm
 import torch
 
 from dataset import MakeDataLoader, DataLoader
-from labeling import generate_labels, ConsiderGroups
+from labeling import generate_labels, ConsiderGroups, make_galaxy_labels_hierarchical
 from sampler import generate_latent
 from image_classifier import ImageClassifier
 from loss import get_sample_variance
@@ -32,6 +33,8 @@ full_batch_size = 64
 steps = full_batch_size // batch_size
 N_dis_train = 2  # How many times discriminator is trained before generator
 
+noise_label = 0.1
+
 epochs_evaluation = 1  # number of epochs after which to evaluate
 num_workers = 24
 
@@ -51,7 +54,7 @@ hyperparameter_dict = {
 
 wandb_kwargs = {
     "project" : "galaxy generator",  # top level identifier
-    "group" : "probe GANs",  # secondary identifier
+    "group" : "final training",  # secondary identifier
     "job_type" : use_label*"conditional" + "BigGAN" + conditional*" & Classifier",  # third level identifier
     "tags" : ["training", "parameter search"],  # tags for organizing tasks
     "name" : f"lr_G {lr_generator}, lr_D {lr_discriminator}",  # bottom level identifier, label of graph in UI
@@ -61,16 +64,17 @@ wandb_kwargs = {
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #device = torch.device("cpu")
 
-generator = Generator(dim_z=latent_dim, labels_dim=labels_dim, G_lr=lr_generator).to(device)
-discriminator = Discriminator(labels_dim=labels_dim, D_lr=lr_discriminator).to(device)
-if reload:
-    generator.load()
-    discriminator.load()
-if conditional:
-    classifier = ImageClassifier().to(device)
-    classifier.load()  # use pretrained classifier
-    classifier.eval()  # classifier is not trained, but always in evaluation mode
-    classifier.use_label_hierarchy()
+if not __name__ == "__main__":
+    generator = Generator(dim_z=latent_dim, labels_dim=labels_dim, G_lr=lr_generator).to(device)
+    discriminator = Discriminator(labels_dim=labels_dim, D_lr=lr_discriminator).to(device)
+    if reload:
+        generator.load()
+        discriminator.load()
+
+classifier = ImageClassifier().to(device)
+classifier.load()  # use pretrained classifier
+classifier.eval()  # classifier is not trained, but always in evaluation mode
+classifier.use_label_hierarchy()
 
 loss_class = torch.nn.MSELoss()
 
@@ -142,7 +146,15 @@ def train_step(images: torch.Tensor,
                labels: torch.Tensor,
                train_generator: bool=True):
     latent = generate_latent(labels.shape[0], latent_dim, sigma=False)
+    # for generator training, use 50 % generated labels, 50 % training labels with noise
     labels_fake = generate_labels(labels.shape[0])
+    half = labels.shape[0]//2
+    labels_fake[:half] = labels[:half] + noise_label*torch.randn(labels[:half].shape).to(device)
+    labels_fake = make_galaxy_labels_hierarchical(labels_fake)
+    # for discriminator training, add noise on input labels
+    labels += noise_label*torch.randn(labels.shape).to(device)
+    labels = make_galaxy_labels_hierarchical(labels)
+    
     generated_images = generator(latent, labels_fake)
 
     # disc training
@@ -190,10 +202,12 @@ def train_biggan(batch_size: int = batch_size,
                  augmented: bool = True):
     torch.backends.cudnn.benchmark = True # use autotuner to find the kernel with best performance
     make_data_loader = MakeDataLoader(N_sample=N_sample, augmented=augmented)
-    data_loader_train = make_data_loader.get_data_loader_train(batch_size=batch_size, shuffle=True,
+    data_loader_train = make_data_loader.get_data_loader_train(batch_size=batch_size,
+                                                               shuffle=True,
                                                                num_workers=num_workers)
     data_loader_valid = make_data_loader.get_data_loader_valid(batch_size=batch_size,
-                                                               shuffle=False, num_workers=num_workers)
+                                                               shuffle=False,
+                                                               num_workers=num_workers)
     for epoch in trange(epochs, desc="epochs"):
         if not epoch % epochs_evaluation:
             print("evaluate")
@@ -237,11 +251,8 @@ def compute_loss_generator(generated_images: torch.Tensor,
     """ compute loss of generator """
     prediction = discriminator(generated_images, labels.detach()).view(-1)
     g_loss_dis = generator_loss(prediction)
-    if not conditional:
-        g_loss_class = torch.tensor(0)
-    else:
-        labels_prediction = classifier.predict(generated_images)
-        g_loss_class = loss_class(labels_prediction[:, considered_label_indices], labels[:, considered_label_indices])
+    labels_prediction = classifier.predict(generated_images)
+    g_loss_class = loss_class(labels_prediction[:, considered_label_indices], labels[:, considered_label_indices])
     if not accuracy:
         return g_loss_dis, g_loss_class
 
@@ -298,8 +309,8 @@ def evaluate_batch(images_train: torch.Tensor,
     generated_images = generator(latent, labels_fake)
     if plot_images:
         width = min(8, len(generated_images))
-        print("generated images min/max:", generated_images.min().item(), generated_images.max().item())
-        print("training images min/max:", images_train.min().item(), images_train.max().item())
+#        print("generated images min/max:", generated_images.min().item(), generated_images.max().item())
+#        print("training images min/max:", images_train.min().item(), images_train.max().item())
         write_generated_galaxy_images_iteration(iteration=iteration, images=generated_images.cpu(), width=width, height=len(generated_images)//width)
         write_generated_galaxy_images_iteration(iteration=0, images=images_train.cpu(), width=width, height=len(generated_images)//width, file_prefix="original_sample")
 
@@ -332,11 +343,10 @@ def evaluate_batch(images_train: torch.Tensor,
         "accuracy_fake": accuracy_fake.item(),
         "accuracy_generator_dis": accuracy_gen_dis.item(),
     }
-    if conditional:
-        logs.update({
-            "loss_generator_class" : g_loss_class.item(),
-            "accuracy_generator_class": accuracy_gen_class.item(),
-        })
+    logs.update({
+        "loss_generator_class" : g_loss_class.item(),
+        "accuracy_generator_class": accuracy_gen_class.item(),
+    })
 
     return logs
 
@@ -346,7 +356,37 @@ def train_biggan_tracked(*args, wandb_kwargs: dict = wandb_kwargs, **kwargs):
     track_progress(train, wandb_kwargs=wandb_kwargs)
 
 
+str2bool = lambda x: x.lower() in ["true", "1"]
+
+arguments = { # name : type conversion
+    "use_label": str2bool,
+    "conditional": str2bool,
+    "lr_generator": float,
+    "lr_discriminator": float,
+    "N_dis_train": int,
+    "latent_dim": int,
+}
+
 if __name__ == "__main__":
+    # use arguments passed in command line as keywords "python ... --argument value"
+    parser = argparse.ArgumentParser()
+    for argument in arguments:
+        parser.add_argument('--'+argument)
+    args = parser.parse_args()
+    # update corresponding variable
+    for argument in arguments:
+        new_val = getattr(args, argument)
+        if new_val:
+            globals()[argument] = arguments[argument](new_val)
+    # update wandb identifier
+    hyperparameter_dict["lr_generator"] = lr_generator
+    hyperparameter_dict["lr_discriminator"] = lr_discriminator
+    wandb_kwargs["job_type"] = use_label*"conditional" + "BigGAN" + conditional*" & Classifier"
+    wandb_kwargs["name"] = f"lr_G {lr_generator}, lr_D {lr_discriminator}"
+    # setup models with chosen parameters
+    generator = Generator(dim_z=latent_dim, labels_dim=labels_dim, G_lr=lr_generator).to(device)
+    discriminator = Discriminator(labels_dim=labels_dim, D_lr=lr_discriminator).to(device)
+    # start training
     if num_workers > 0 and False:
         torch.multiprocessing.set_start_method('spawn', force=True)
     if track:

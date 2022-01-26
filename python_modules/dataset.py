@@ -4,7 +4,7 @@
 import numpy as np
 from pandas import read_csv
 import  torch
-from torchvision.transforms import Compose, CenterCrop, ToTensor, RandomAffine, Resize, RandomVerticalFlip, RandomHorizontalFlip
+from torchvision.transforms import Compose, CenterCrop, ToTensor, RandomAffine, Resize, RandomVerticalFlip, RandomHorizontalFlip, Normalize
 from torch.utils.data import DataLoader, Dataset, Subset
 from sklearn.model_selection import train_test_split
 from glob import glob
@@ -52,6 +52,7 @@ class DataSet(Dataset):
             #    Resize((100,)*2),
             Resize((64,) * 2),
             ToTensor(),
+            Normalize(0.5, 0.5),
         ])
 
         self.augment_test = Compose([
@@ -63,6 +64,7 @@ class DataSet(Dataset):
             #    Resize((100,)*2),
             Resize((64,) * 2),
             ToTensor(),
+            Normalize(0.5, 0.5),
         ])
 
     def __len__(self) -> int:

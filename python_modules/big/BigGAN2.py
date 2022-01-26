@@ -263,7 +263,6 @@ class Generator(NeuralNetwork):
     return torch.sigmoid(self.output_layer(h))
 #    return torch.tanh(self.output_layer(h))
 
-
 # Discriminator architecture, same paradigm as G's above
 def D_arch(ch=64, attention='64',ksize='333333', dilation='111111'):
   arch = {}

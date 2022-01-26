@@ -26,7 +26,7 @@ weight_loss_sample_variance = 0 #200.
 batch_size = 64
 N_batches = 1
 N_sample = -1 #batch_size * N_batches
-evaluation_steps = 865 #250 # N_batches*10
+evaluation_steps = 1000 #865 #250 # N_batches*10
 N_batches_test = 90000 # number of batches considered for evaluation
 num_workers = 24
 
@@ -41,10 +41,10 @@ hyperparameter_dict = {
 
 wandb_kwargs = {
     "project" : "galaxy classifier", ## top level identifier
-    "group" : "parameter search", ## secondary identifier
-    "job_type" : "long training", ## third level identifier
-    "tags" : ["training", "parameter search"],  ## tags for organizing tasks
-    "name" : "test", ## bottom level identifier, label of graph in UI
+    "group" : "distributed", ## secondary identifier
+    "job_type" : "full training", ## third level identifier
+    "tags" : ["training"],  ## tags for organizing tasks
+    "name" : f"lr {learning_rate_init}, 8 GPUs", ## bottom level identifier, label of graph in UI
     "config" : hyperparameter_dict, ## dictionary of used hyperparameters
 }
 
@@ -130,7 +130,103 @@ def train_classifier_on_random_hyperparameters(learning_rate_init=None, gamma=No
     train_classifier_on_hyperparameters(learning_rate_init=learning_rate_init, gamma=gamma, seed_parameter=seed_parameter, track=track)
 
 
+### distributed on multiple GPUs
+import os
+from collections import Counter
+
+import wandb
+import torch.multiprocessing as mp
+import torch.distributed as dist
+from torch.utils.data.distributed import DistributedSampler
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.optim.lr_scheduler import MultiStepLR
+
+from file_system import folder_results
+from accuracy_measures import measure_accuracy_classifier
+from loss import mse
+
+def train_classifier_distributed(rank, world_size, optimizer=optimizer):
+    # initialize distributed process group
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
+    dist.init_process_group(rank=rank, world_size=world_size, backend="nccl")
+    # prepare splitted dataloader
+    make_data_loader = MakeDataLoader()
+    sampler_train = DistributedSampler(make_data_loader.dataset_train, num_replicas=world_size, rank=rank, shuffle=True, drop_last=True)
+    data_loader_train = make_data_loader.get_data_loader_train(batch_size=batch_size, num_workers=0, sampler=sampler_train, shuffle=False)
+    data_loader_valid = make_data_loader.get_data_loader_valid(batch_size=batch_size, num_workers=0)
+    # prepare model
+    classifier = Classifier(seed=seed_parameter).to(rank)
+    ddp_classifier = DDP(classifier, device_ids=list(range(world_size)), output_device=rank, find_unused_parameters=True)
+    optimizer = optimizer(ddp_classifier.parameters(), lr=learning_rate_init)
+    scheduler = MultiStepLR(optimizer, milestones=[292, 373], gamma=gamma)
+    for epoch in range(epochs):
+        data_loader_train.sampler.set_epoch(epoch)
+        ddp_classifier.train()
+        for image, label in data_loader_train:
+            image = image.to(rank)
+            label = label.to(rank)
+            optimizer.zero_grad(set_to_none=True)
+            prediction = ddp_classifier(image, train=True)
+            loss_train = mse(prediction, label)
+            loss_train.mean().backward()
+            torch.nn.utils.clip_grad_norm_(ddp_classifier.parameters(), max_norm=1)
+            optimizer.step()
+        if rank == 0:
+            accs_train = measure_accuracy_classifier(prediction, label)
+            ddp_classifier.eval()
+            loss_valid = 0
+            accs_valid = Counter({group:0 for group in range(1,12)})
+            with torch.no_grad():
+                for N_test, (image, label) in enumerate(data_loader_valid):
+                    image = image.to(rank)
+                    label = label.to(rank)
+                    prediction = ddp_classifier(image, train=False)
+                    loss_valid += mse(predction, label).item()
+                    accs_valid.update(measure_accuracy_classifier(prediction, label))
+            for group in accs.keys():
+                accs[group] /= N_test + 1
+            logs = {"loss_train": np.sqrt(loss_train.item()),
+                    "loss_valid": np.sqrt(loss_valid)}
+            logs.update({f"accuracy_Q{group}_train":acc for group, acc in accs_train.items()})
+            logs.update({f"accuracy_Q{group}_valid":acc for group, acc in accs_valid.items()})
+            wandb.log(logs)
+    # safe full model for later use
+    if not epoch % 100:
+        torch.save(ddp_classifier.model, folder_results + f"classifier_model_epoch{epoch}.pth")
+    # end distributed process
+    dist.destroy_process_group()
+    
+
+
+def run_train_classifier_distributed():
+    wandb.login(key="834835ffb309d5b1618c537d20d23794b271a208")
+    wandb.init(**wandb_kwargs)
+    world_size = N_gpus
+    print("N_gpus", world_size)
+    world_size = 8
+    mp.spawn(train_classifier_distributed,
+             args=(world_size,),
+             nprocs=world_size,
+             join=True)
+    wandb.finish()
+
+def load_ddp_model_to_non_ddp_model():
+    model_dict = OrderedDict()
+    pattern = re.compile('module.')
+    for k,v in state_dict.items():
+        if re.search("module", k):
+            model_dict[re.sub(pattern, '', k)] = v
+        else:
+            model_dict = state_dict
+    model.load_state_dict(model_dict)
+
+    
 if __name__ == "__main__":
 
-    train_classifier_on_hyperparameters(seed_parameter=seed_parameter)
+    run_train_classifier_distributed()
+    
+#    train_classifier_on_hyperparameters(seed_parameter=seed_parameter)
+
+
 #    train_classifier_on_random_hyperparameters(seed_parameter=seed_parameter)
