@@ -9,6 +9,10 @@ class NeuralNetwork(torch.nn.Module):
         self.parameter_file = f"{folder_results}parameter_state_dict_{self._get_name()}.pth"
         # self.cuda() ## all NN shall run on cuda ### doesnt seem to work
 
+    def save_model(self, file: str):
+        """ save full model to file """
+        torch.save(self, file)
+
     def save(self) -> None:
         """ save learned parameters to parameter_file """
         torch.save(self.state_dict(), self.parameter_file)
@@ -16,7 +20,6 @@ class NeuralNetwork(torch.nn.Module):
     def load(self) -> None:
         """ load learned parameters from parameter_file """
         self.load_state_dict(torch.load(self.parameter_file))
-        self.eval()
 
     @staticmethod
     def same_padding(kernel_size=1) -> float:

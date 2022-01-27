@@ -1,0 +1,3 @@
+from distribution_measures.autoencoder import train_autoencoder
+
+train_autoencoder()

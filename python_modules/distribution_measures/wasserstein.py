@@ -14,7 +14,7 @@ def wasserstein(a, b,
     # initiate loss function
     Loss = SamplesLoss("sinkhorn", p=2, blur=blur, scaling=scaling, backend="tensorized")
     # compute distance
-    distance = np.mean([Loss(x_,y_).item() for x_ in loop_numpy2cuda(x) for y_ in loop_numpy2cuda(y)])
+    distance = np.mean([Loss(x, y).item() for x in loop_numpy2cuda(a) for y in loop_numpy2cuda(b)])
     return distance
 
 
