@@ -60,6 +60,8 @@ def train_autoencoder(epochs: int = 250, batch_size: int = 64, num_workers=4, tr
     decoder = ConditionalDecoder().cuda()
     classifier = ImageClassifier().cuda()
     classifier.load()
+    classifier.eval()
+    classifier.use_label_hierarchy()
     make_data_loader = MakeDataLoader(augmented=True)
     data_loader = make_data_loader.get_data_loader_train(batch_size=batch_size,
                                                          shuffle=True,
@@ -86,8 +88,6 @@ def train_autoencoder(epochs: int = 250, batch_size: int = 64, num_workers=4, tr
             decoder.optimizer.step()
         encoder.save()
         decoder.save()
-        print(labels[0])
-        print(generated_labels[0])
         if track:
             log = {
                 "loss reconstruction" : loss_recon_.item(),
@@ -95,7 +95,6 @@ def train_autoencoder(epochs: int = 250, batch_size: int = 64, num_workers=4, tr
                 "loss class": loss_class_.item(),
                 "loss": loss.item()
             }
-            print(log)
             wandb.log(log)
         if plot_images and not epoch % plot_images:
             width = min(8, len(generated_images))
@@ -194,7 +193,7 @@ class ConditionalDecoder(NeuralNetwork):
           self.c_modules.append(Sequential(Conv2d(ngf * 2**(3-i), colors_dim, 3, 1, 1, bias=False), Tanh()))
         self.set_optimizer(optimizer, lr=learning_rate*ll_scaling, betas=betas)
 
-    def forward(self, latent, labels, step=3, alpha=1):
+    def forward(self, latent, labels, step=3):
         y = self.embedding(labels)
         out = cat((latent, y), dim=1)
         out = self.dense_init(out)
@@ -202,10 +201,8 @@ class ConditionalDecoder(NeuralNetwork):
         out = self.init(out)
         for i in range(step):
             out =  self.m_modules[i](out)
-        out2 = self.c_modules[step](self.m_modules[step](out))
-        if alpha == 1 or not step:   return out2
-        out = F.interpolate(self.c_modules[step-1](out), scale_factor=2, mode='bilinear', align_corners=False)
-        return (1-alpha)*out + (alpha)*out2
+        out = self.c_modules[step](self.m_modules[step](out))
+        return out
 
 def genUpsample(input_channels, output_channels, stride, pad):
    return Sequential(

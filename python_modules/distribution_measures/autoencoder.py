@@ -4,6 +4,7 @@ where the distribution of features can be compared between diffirent sets of ima
 """
 from tqdm import trange
 
+import wandb
 from torch.optim import Adam
 from torch.nn import Sequential, ModuleList, \
                      Conv2d, Linear, \
@@ -11,6 +12,7 @@ from torch.nn import Sequential, ModuleList, \
                      BatchNorm1d, BatchNorm2d, Flatten, \
                      ConvTranspose2d, UpsamplingBilinear2d
 
+from helpful_functions import write_generated_galaxy_images_iteration
 from sampler import gaussian_sampler
 from loss import loss_reconstruction,loss_kl
 from dataset import MakeDataLoader
@@ -25,7 +27,7 @@ betas = (0.5, 0.999)
 
 # hyperparameters
 learning_rate = 2e-4
-latent_dim = 8
+latent_dim = 16
 alpha = 0.0005
 
 # wandb
@@ -33,7 +35,6 @@ hyperparameters = {
     "learning_rate": learning_rate,
     "dim_z": latent_dim,
     "weight_loss_kl": alpha,
-    "weight_loss_class": beta,
 }
 wandb_kwargs = {
     "project" : "galaxy generator",  # top level identifier
@@ -45,7 +46,7 @@ wandb_kwargs = {
 }
 
 
-def train_autoencoder(epochs: int = 2000, batch_size: int = 64, num_workers=4, track=False):
+def train_autoencoder(epochs: int = 2000, batch_size: int = 64, num_workers=4, track=False, plot_images: int = 0):
     """ perform training loop for the VAE """
     if track:
         wandb.login(key="834835ffb309d5b1618c537d20d23794b271a208")
@@ -63,15 +64,14 @@ def train_autoencoder(epochs: int = 2000, batch_size: int = 64, num_workers=4, t
             images = images*2 - 1 # rescale (0,1) to (-1,1)
 
             latent_mu, latent_sigma = encoder(images)
-            latent = gaussian_sampler(latent_mu, latent_sigma).unsqueeze(2).unsqueeze(3)
+            latent = gaussian_sampler(latent_mu, latent_sigma) #.unsqueeze(2).unsqueeze(3)
             generated_images = decoder(latent)
 
             decoder.zero_grad()
             encoder.zero_grad()
             loss_recon_ = loss_reconstruction(images, generated_images)
             loss_kl_ = alpha*loss_kl([latent_mu, latent_sigma])
-            loss_class_ = beta*loss_class(labels, generated_labels)
-            loss = loss_recon_ + loss_kl_ + loss_class_
+            loss = loss_recon_ + loss_kl_
             loss.backward()
 
             encoder.optimizer.step()
@@ -84,8 +84,11 @@ def train_autoencoder(epochs: int = 2000, batch_size: int = 64, num_workers=4, t
                 "loss KL": loss_kl_.item(),
                 "loss": loss.item()
             }
-            print(log)
             wandb.log(log)
+        if plot_images and not epoch % plot_images:
+            width = min(8, len(generated_images))
+            write_generated_galaxy_images_iteration(iteration=epoch, images=generated_images, width=width,
+                                                    height=len(generated_images) // width, file_prefix="generated_VAEreduc")
     wandb.finish()
 
 
@@ -128,7 +131,8 @@ class Encoder(NeuralNetwork):
         self.dense_z_mu = Linear(2048, self.dim_z)
         self.dense_z_std = Sequential(
             Linear(2048, self.dim_z),
-            Softplus(),)
+            Softplus(),
+        )
         self.set_optimizer(optimizer, lr=learning_rate, betas=betas)
 
     def forward(self, images):
@@ -140,7 +144,6 @@ class Encoder(NeuralNetwork):
         z_mu = self.dense_z_mu(x)
         z_std = self.dense_z_std(x)
         return z_mu, z_std
-
 
 
 class Decoder(NeuralNetwork):
@@ -156,8 +159,8 @@ class Decoder(NeuralNetwork):
           self.c_modules.append(Sequential(Conv2d(ngf * 2**(3-i), colors_dim, 3, 1, 1, bias=False), Tanh()))
         self.set_optimizer(optimizer, lr=learning_rate*ll_scaling, betas=betas)
 
-    def forward(self, input, step=3, alpha=1):
-        out = self.init(input)
+    def forward(self, latent, step=3, alpha=1):
+        out = self.init(latent.unsqueeze(2).unsqueeze(3))
         for i in range (step):
             out =  self.m_modules[i](out)
         out2 = self.c_modules[step](self.m_modules[step](out))
@@ -180,3 +183,4 @@ def genUpsample2(input_channels, output_channels, kernel_size):
         BatchNorm2d(output_channels),
         LeakyReLU(negative_slope=negative_slope),
         UpsamplingBilinear2d(scale_factor=2))
+

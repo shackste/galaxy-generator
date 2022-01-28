@@ -61,7 +61,8 @@ class DistributionEvaluation():
     def get_distances(self, squared: bool = True):
         """ get average (squared) distance to cluster centers for all distributions. """
         distances = {key: compute_distances(clusters, self.distance_transforms[key], self.N_clusters, squared=squared)
-                     for key, clusters in self.predictions.items()}
+                     for key, clusters in self.predictions.items()
+                     if not key == "reference"}
         return distances
 
 
@@ -86,7 +87,13 @@ def compute_distances(clusters: np.array, distances: np.array, N_clusters: int, 
     return average_distances
 
 
+def compute_l1_distance(reference, values, div=1):
+    """ Estimate L2 distance between values and reference. """
+    result = np.sum([np.abs(v - r)  / r for r, v in zip(reference, values)])
+    return result / div
+
+
 def compute_l2_distance(reference, values, div=1):
     """ Estimate L2 distance between values and reference. """
-    result = np.sum([(v - r) ** 2 / r for r, v in zip(reference, values)])
+    result = np.sum([(v - r)**2 / r**2 for r, v in zip(reference, values)])
     return result / div
