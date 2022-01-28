@@ -59,7 +59,7 @@ def write_generated_galaxy_images_iteration(*, iteration: int = None, images: to
     assert type(iteration) is int, "provide iteration as integer"
     assert images is not None, "provide generated galaxy images"
     assert width*height == len(images), "width and height need to fit number of images, N = width*height"
-
+    images = images.detach().cpu()
     d = image_dim
 
     flat_image = np.empty((3, height*d, width*d))

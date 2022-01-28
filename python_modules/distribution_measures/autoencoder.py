@@ -20,14 +20,37 @@ from neuralnetwork import NeuralNetwork
 colors_dim = 3
 momentum = 0.99 # Batchnorm
 negative_slope = 0.2 # LeakyReLU
-latent_dim = 8
 optimizer = Adam
-learning_rate = 2e-4
 betas = (0.5, 0.999)
 
+# hyperparameters
+learning_rate = 2e-4
+latent_dim = 8
+alpha = 0.0005
 
-def train_autoencoder(epochs: int = 2000, batch_size: int = 64, alpha: float = 0.0005, num_workers=4):
+# wandb
+hyperparameters = {
+    "learning_rate": learning_rate,
+    "dim_z": latent_dim,
+    "weight_loss_kl": alpha,
+    "weight_loss_class": beta,
+}
+wandb_kwargs = {
+    "project" : "galaxy generator",  # top level identifier
+    "group" : "reduction VAE",  # secondary identifier
+    "job_type" : "training",  # third level identifier
+    "tags" : ["training", "parameter search"],  # tags for organizing tasks
+    "name" : f"lr {learning_rate}, dim_z {latent_dim}, alpha {alpha}", # bottom level identifier, label of graph in UI
+    "config" : hyperparameters, # dictionary of used hyperparameters
+}
+
+
+def train_autoencoder(epochs: int = 2000, batch_size: int = 64, num_workers=4, track=False):
     """ perform training loop for the VAE """
+    if track:
+        wandb.login(key="834835ffb309d5b1618c537d20d23794b271a208")
+        wandb.init(**wandb_kwargs)
+
     encoder = Encoder().cuda()
     decoder = Decoder().cuda()
     make_data_loader = MakeDataLoader(augmented=True)
@@ -45,13 +68,25 @@ def train_autoencoder(epochs: int = 2000, batch_size: int = 64, alpha: float = 0
 
             decoder.zero_grad()
             encoder.zero_grad()
-            lr = loss_reconstruction(images, generated_images)
-            g_loss = lr + loss_kl(latent) * alpha
-            g_loss.backward()
+            loss_recon_ = loss_reconstruction(images, generated_images)
+            loss_kl_ = alpha*loss_kl([latent_mu, latent_sigma])
+            loss_class_ = beta*loss_class(labels, generated_labels)
+            loss = loss_recon_ + loss_kl_ + loss_class_
+            loss.backward()
 
             encoder.optimizer.step()
             decoder.optimizer.step()
         encoder.save()
+        decoder.save()
+        if track:
+            log = {
+                "loss reconstruction": loss_recon_.item(),
+                "loss KL": loss_kl_.item(),
+                "loss": loss.item()
+            }
+            print(log)
+            wandb.log(log)
+    wandb.finish()
 
 
 class Encoder(NeuralNetwork):

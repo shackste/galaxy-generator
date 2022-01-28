@@ -15,8 +15,6 @@ from statistical_tests import compute_divergence_total_intensity_statistics, com
 from big.BigGAN2 import Generator, Discriminator
 from big.losses import discriminator_loss, generator_loss
 
-# first try Christians training loops
-# use smaller GAN
 considered_groups = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]  # try less groups ## try feeding one-hot labels ## try using simpler dataset (cifar-10, mnist ...)
 consider_groups = ConsiderGroups(considered_groups=considered_groups)
 considered_label_indices = consider_groups.get_considered_labels()
