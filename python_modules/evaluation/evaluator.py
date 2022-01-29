@@ -16,6 +16,7 @@ from geomloss import SamplesLoss
 from python_modules.big.BigGAN2 import Generator
 from python_modules.evaluation.resnet_simclr import ResNetSimCLR
 from python_modules.evaluation.classifier import GalaxyZooClassifier
+from python_modules.evaluation.autoencoder import Encoder
 from python_modules.evaluation.fid import get_fid_fn, load_patched_inception_v3
 from python_modules.evaluation.inception_score import inception_score
 from python_modules.evaluation.vgg16 import vgg16
@@ -119,21 +120,33 @@ class Evaluator:
         i_score = self._compute_inception_score()
         print(f'Inception score: {i_score}')
 
-        # compute Chamfer distance
-        chamfer_dist = self._chamfer_distance()
+        # compute Chamfer distance with SimCLR features
+        chamfer_dist = self._chamfer_distance('simclr')
         print(f'{chamfer_dist=}')
 
-        # compute SSL FID score
-        ssl_fid = self._compute_ssl_fid()
-        print(f'{ssl_fid=}')
+        # compute Chamfer distance with AE features
+        chamfer_dist_ae = self._chamfer_distance('ae')
+        print(f'{chamfer_dist_ae=}')
+
+        # compute FID score with SimCLR features
+        fid_simclr = self._compute_ssl_fid('simclr')
+        print(f'{fid_simclr=}')
+
+        # compute FID score with AE features
+        fid_ae = self._compute_ssl_fid('ae')
+        print(f'{fid_ae=}')
 
         # compute SSL PPL score
-        ssl_ppl = self._compute_ppl('simclr')
-        print(f'{ssl_ppl=}')
+        ppl_simclr = self._compute_ppl('simclr')
+        print(f'{ppl_simclr=}')
 
         # compute VGG PPL score
-        vgg_ppl = self._compute_ppl('vgg')
-        print(f'{vgg_ppl=}')
+        ppl_vgg = self._compute_ppl('vgg')
+        print(f'{ppl_vgg=}')
+
+        # compute AE PPL score
+        ppl_ae = self._compute_ppl('ae')
+        print(f'{ppl_ae=}')
 
         # compute KID Inception
         kid_inception = self._compute_kid('inception')
@@ -143,9 +156,17 @@ class Evaluator:
         kid_ssl = self._compute_kid('simclr')
         print(f'{kid_ssl=}')
 
-        # geometric distance
-        geom_dist = self._compute_geometric_distance()
-        print(f'{geom_dist=}')
+        # compute KID AE
+        kid_ae = self._compute_kid('ae')
+        print(f'{kid_ae=}')
+
+        # geometric distance using SimCLR features
+        geom_dist_simclr = self._compute_geometric_distance('simclr')
+        print(f'{geom_dist_simclr=}')
+
+        # geometric distance using AE features
+        geom_dist_ae = self._compute_geometric_distance('ae')
+        print(f'{geom_dist_ae=}')
 
         # attribute control accuracy
         attr_control_acc = self._attribute_control_accuracy(True)
@@ -233,19 +254,30 @@ class Evaluator:
         return result
 
     @torch.no_grad()
-    def _compute_geometric_distance(self) -> float:
+    def _compute_geometric_distance(self, encoder_type: str = 'simclr') -> float:
         """Computes geometric distance between real and generated samples using
         features computed using SimCLR
+
+        Args:
+            encoder_type: type of encoder to use. Choices: simclr, ae
 
         Returns:
             float: geometric distance
         """
 
+        if encoder_type not in ['simclr', 'ae']:
+            raise ValueError('Incorrect encoder')
+
+        if encoder_type == 'simclr':
+            encoder = self._encoder
+        else:
+            encoder = Encoder().to(self._device).eval()
+            ckpt_encoder = torch.load(self._config['eval']['path_encoder'])
+            encoder.load_state_dict(ckpt_encoder)
+
         loss = SamplesLoss("sinkhorn", p=2, blur=0.05, scaling=0.8, backend="tensorized")
 
         bs = self._config['batch_size']
-        # n_samples = 20_000
-        # n_batches = int(n_samples / bs) + 1
 
         # load dataset
         path = self._config['dataset']['path']
@@ -255,11 +287,6 @@ class Evaluator:
         make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=True)
         dl_valid = make_dl.get_data_loader_valid(bs)
         dl_test = make_dl.get_data_loader_test(bs)
-
-        # ds_val = make_dl.dataset_valid
-        # ds_test = make_dl.dataset_test
-        # ds = ConcatDataset([ds_test, ds_val])
-        # dl = infinite_loader(DataLoader(ds, bs, shuffle=True, drop_last=True))
 
         embeddings_real = []
         embeddings_gen = []
@@ -274,8 +301,8 @@ class Evaluator:
 
             with torch.no_grad():
                 img_gen = self._generator(latent, lbl)
-                h, _ = self._encoder(img)
-                h_gen, _ = self._encoder(img_gen)
+                h, _ = encoder(img)
+                h_gen, _ = encoder(img_gen)
 
             embeddings_real.extend(h.detach().cpu())
             embeddings_gen.extend(h_gen.detach().cpu())
@@ -290,19 +317,23 @@ class Evaluator:
         """Computes KID score
 
         Args:
-            encoder_type: type of encoder to use. Choices: simclr, inception
+            encoder_type: type of encoder to use. Choices: simclr, inception, ae
 
         Returns:
             float: KID score
         """
 
-        if encoder_type not in ['simclr', 'inception']:
+        if encoder_type not in ['simclr', 'inception', 'ae']:
             raise ValueError('Incorrect encoder')
 
         if encoder_type == 'simclr':
             encoder = self._encoder
-        else:
+        elif encoder_type == 'inception':
             encoder = load_patched_inception_v3().to(self._device).eval()
+        else:
+            encoder = Encoder().to(self._device).eval()
+            ckpt_encoder = torch.load(self._config['eval']['path_encoder'])
+            encoder.load_state_dict(ckpt_encoder)
 
         bs = self._config['batch_size']
         path = self._config['dataset']['path']
@@ -363,19 +394,23 @@ class Evaluator:
         """Computes perceptual path length (PPL)
 
         Args:
-            encoder_type: type of encoder to use. Choices: simclr, vgg
+            encoder_type: type of encoder to use. Choices: simclr, vgg, ae
 
         Returns:
             float: perceptual path length (smaller better)
         """
 
-        if encoder_type not in ['simclr', 'vgg']:
+        if encoder_type not in ['simclr', 'vgg', 'ae']:
             raise ValueError('Incorrect encoder')
 
         if encoder_type == 'simclr':
             encoder = self._encoder
-        else:
+        elif encoder_type == 'vgg':
             encoder = vgg16().to(self._device).eval()
+        else:
+            encoder = Encoder().to(self._device).eval()
+            ckpt_encoder = torch.load(self._config['eval']['path_encoder'])
+            encoder.load_state_dict(ckpt_encoder)
 
         n_samples = 50_000
         eps = 1e-4
@@ -401,7 +436,7 @@ class Evaluator:
                 img = self._generator(torch.cat([zt0, zt1]), labels_cat)
                 img = (img - 0.5) / 0.5
 
-                if encoder_type == 'simclr':
+                if encoder_type in ['simclr', 'ae']:
                     h, _ = encoder(img)
                 else:
                     if img.shape[2] != 256 or img.shape[3] != 256:
@@ -419,12 +454,25 @@ class Evaluator:
         return ppl
 
     @torch.no_grad()
-    def _compute_ssl_fid(self) -> float:
+    def _compute_ssl_fid(self, encoder_type: str = 'simclr') -> float:
         """Computes FID on SSL features
+
+        Args:
+            encoder_type: type of encoder to use. Choices: simclr, ae
 
         Returns:
             float: FID
         """
+
+        if encoder_type not in ['simclr', 'ae']:
+            raise ValueError('Incorrect encoder')
+
+        if encoder_type == 'simclr':
+            encoder = self._encoder
+        else:
+            encoder = Encoder().to(self._device).eval()
+            ckpt_encoder = torch.load(self._config['eval']['path_encoder'])
+            encoder.load_state_dict(ckpt_encoder)
 
         bs = self._config['batch_size']
 
@@ -453,8 +501,8 @@ class Evaluator:
                 img_gen = self._generator(latent, lbl)
                 img_gen = (img_gen - 0.5) / 0.5
 
-                h, _ = self._encoder(img)
-                h_gen, _ = self._encoder(img_gen)
+                h, _ = encoder(img)
+                h_gen, _ = encoder(img_gen)
 
             activations_real.extend(h.cpu().numpy())
             activations_fake.extend(h_gen.cpu().numpy())
@@ -471,12 +519,25 @@ class Evaluator:
         return fletcher_distance
 
     @torch.no_grad()
-    def _chamfer_distance(self) -> float:
+    def _chamfer_distance(self, encoder_type: str = 'simclr') -> float:
         """Computes Chamfer distance between real and generated samples
+
+        Args:
+            encoder_type: type of encoder to use. Choices: simclr, ae
 
         Returns:
             float: Chamfer distance
         """
+
+        if encoder_type not in ['simclr', 'ae']:
+            raise ValueError('Incorrect encoder')
+
+        if encoder_type == 'simclr':
+            encoder = self._encoder
+        else:
+            encoder = Encoder().to(self._device).eval()
+            ckpt_encoder = torch.load(self._config['eval']['path_encoder'])
+            encoder.load_state_dict(ckpt_encoder)
 
         bs = self._config['batch_size']
 
@@ -507,8 +568,8 @@ class Evaluator:
                 img_gen = self._generator(latent, lbl)
                 img_gen = (img_gen - 0.5) / 0.5  # renormalize
 
-                h, _ = self._encoder(img)
-                h_gen, _ = self._encoder(img_gen)
+                h, _ = encoder(img)
+                h_gen, _ = encoder(img_gen)
 
             embeddings_real.extend(h.cpu().numpy())
             embeddings_gen.extend(h_gen.cpu().numpy())
