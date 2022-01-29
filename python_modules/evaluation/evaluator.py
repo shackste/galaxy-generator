@@ -112,28 +112,28 @@ class Evaluator:
 
     def evaluate(self):
         # compute FID score
-        # fid_score = self._compute_fid_score()
-        # print(f'{fid_score=}')
+        fid_score = self._compute_fid_score()
+        print(f'{fid_score=}')
 
         # compute inception score (IS)
-        # i_score = self._compute_inception_score()
-        # print(f'Inception score: {i_score}')
+        i_score = self._compute_inception_score()
+        print(f'Inception score: {i_score}')
 
         # compute Chamfer distance
-        # chamfer_dist = self._chamfer_distance()
-        # print(f'{chamfer_dist=}')
+        chamfer_dist = self._chamfer_distance()
+        print(f'{chamfer_dist=}')
 
         # compute SSL FID score
-        # ssl_fid = self._compute_ssl_fid()
-        # print(f'{ssl_fid=}')
+        ssl_fid = self._compute_ssl_fid()
+        print(f'{ssl_fid=}')
 
         # compute SSL PPL score
-        # ssl_ppl = self._compute_ppl('simclr')
-        # print(f'{ssl_ppl=}')
+        ssl_ppl = self._compute_ppl('simclr')
+        print(f'{ssl_ppl=}')
 
         # compute VGG PPL score
-        # vgg_ppl = self._compute_ppl('vgg')
-        # print(f'{vgg_ppl=}')
+        vgg_ppl = self._compute_ppl('vgg')
+        print(f'{vgg_ppl=}')
 
         # compute KID Inception
         kid_inception = self._compute_kid('inception')
@@ -144,12 +144,12 @@ class Evaluator:
         print(f'{kid_ssl=}')
 
         # geometric distance
-        # geom_dist = self._compute_geometric_distance()
-        # print(f'{geom_dist=}')
+        geom_dist = self._compute_geometric_distance()
+        print(f'{geom_dist=}')
 
         # attribute control accuracy
-        # attr_control_acc = self._attribute_control_accuracy(True)
-        # pprint(f'{attr_control_acc=}')
+        attr_control_acc = self._attribute_control_accuracy(True)
+        pprint(f'{attr_control_acc=}')
 
     def _get_dl(self) -> DataLoader:
         """Creates infinite dataloader from valid and test sets of images
@@ -244,8 +244,8 @@ class Evaluator:
         loss = SamplesLoss("sinkhorn", p=2, blur=0.05, scaling=0.8, backend="tensorized")
 
         bs = self._config['batch_size']
-        n_samples = 20_000
-        n_batches = int(n_samples / bs) + 1
+        # n_samples = 20_000
+        # n_batches = int(n_samples / bs) + 1
 
         # load dataset
         path = self._config['dataset']['path']
@@ -253,16 +253,20 @@ class Evaluator:
         size = self._config['dataset']['size']
 
         make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=True)
-        ds_val = make_dl.dataset_valid
-        ds_test = make_dl.dataset_test
-        ds = ConcatDataset([ds_test, ds_val])
-        dl = infinite_loader(DataLoader(ds, bs, shuffle=True, drop_last=True))
+        dl_valid = make_dl.get_data_loader_valid(bs)
+        dl_test = make_dl.get_data_loader_test(bs)
+
+        # ds_val = make_dl.dataset_valid
+        # ds_test = make_dl.dataset_test
+        # ds = ConcatDataset([ds_test, ds_val])
+        # dl = infinite_loader(DataLoader(ds, bs, shuffle=True, drop_last=True))
 
         embeddings_real = []
         embeddings_gen = []
 
-        for _ in trange(n_batches):
-            img, lbl = next(dl)
+        for batch_val, batch_test in zip(dl_valid, dl_test):
+            _, lbl = batch_val
+            img, _ = batch_test
             img = img.to(self._device)
             img = (img - 0.5) / 0.5  # renormalize image
             lbl = lbl.to(self._device)
