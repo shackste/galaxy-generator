@@ -15,8 +15,9 @@ We use Galaxy Zoo dataset from [Kaggle competition](https://www.kaggle.com/c/gal
 
 1. Download pretrained SimCLR encoder from [link](https://drive.google.com/file/d/1lOXiTBcbI3AnoNiFmrk_1keQVKqbAwjB/view?usp=sharing)
 2. Download pretrained classifier from [link](https://drive.google.com/file/d/1B9SMUFFldvDEgHrUQVmFTPSxuiRZ3sfk/view?usp=sharing)
-3. Fill the configuration file. Example is provided in `configs/biggan_eval.yaml`
-4. Run
+3. Download pretrained autoencoder from [link](https://drive.google.com/file/d/1WTj-x3LjbIufdypnr4GQD1bzYyyPPAY4/view?usp=sharing) 
+4. Fill the configuration file. Example is provided in `configs/biggan_eval.yaml`
+5. Run
 ```bash
 python python_modules/evaluation/main.py -c <path to config file>
 ```
