@@ -191,6 +191,7 @@ class Evaluator:
 
         n_out = self._config['dataset']['n_out']
         diffs = []
+        labels = []
 
         dl = self._get_dl()
 
@@ -207,8 +208,10 @@ class Evaluator:
 
             diff = (label - pred) ** 2
             diffs.extend(diff.detach().cpu().numpy())
+            labels.extend(label.detach().cpu().numpy())
 
         diffs = np.array(diffs)
+        labels = np.array(labels)
 
         if build_hist:
             out_dir = Path(out_dir)
@@ -226,6 +229,7 @@ class Evaluator:
         result = {}
         for i in range(n_out):
             result[self._columns[i]] = mean_diffs[i]
+        result['aggregated_attribute_accuracy'] = np.sum(diffs) / np.sum(labels)
         return result
 
     @torch.no_grad()
