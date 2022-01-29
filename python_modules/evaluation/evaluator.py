@@ -124,8 +124,8 @@ class Evaluator:
         # print(f'{chamfer_dist=}')
 
         # compute SSL FID score
-        ssl_fid = self._compute_ssl_fid()
-        print(f'{ssl_fid=}')
+        # ssl_fid = self._compute_ssl_fid()
+        # print(f'{ssl_fid=}')
 
         # compute SSL PPL score
         # ssl_ppl = self._compute_ppl('simclr')
@@ -136,12 +136,12 @@ class Evaluator:
         # print(f'{vgg_ppl=}')
 
         # compute KID Inception
-        # kid_inception = self._compute_kid('inception')
-        # print(f'{kid_inception=}')
+        kid_inception = self._compute_kid('inception')
+        print(f'{kid_inception=}')
 
         # compute KID SSL
-        # kid_ssl = self._compute_kid('simclr')
-        # print(f'{kid_ssl=}')
+        kid_ssl = self._compute_kid('simclr')
+        print(f'{kid_ssl=}')
 
         # geometric distance
         # geom_dist = self._compute_geometric_distance()
@@ -300,17 +300,20 @@ class Evaluator:
         else:
             encoder = load_patched_inception_v3().to(self._device).eval()
 
-        n_samples = 50_000
         bs = self._config['batch_size']
-        n_batches = int(n_samples / bs) + 1
-
-        dl = self._get_dl()
+        path = self._config['dataset']['path']
+        anno = self._config['dataset']['anno']
+        size = self._config['dataset']['size']
+        make_dl = MakeDataLoader(path, anno, size, augmented=False)
+        dl_valid = make_dl.get_data_loader_valid(bs)
+        dl_test = make_dl.get_data_loader_test(bs)
 
         features_real = []
         features_gen = []
 
-        for _ in trange(n_batches):
-            img, lbl = next(dl)
+        for batch_val, batch_test in zip(dl_valid, dl_test):
+            _, lbl = batch_val
+            img, _ = batch_test
             img = img.to(self._device)
             img = (img - 0.5) / 0.5  # renormalize
 
@@ -538,7 +541,7 @@ class Evaluator:
 
         make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=False)
         ds = make_dl.dataset_valid
-        n_samples = len(ds)
+        n_samples = 50_000
 
         dataset = GANDataset(self._generator, ds, self._device, n_samples)
         score = inception_score(dataset, batch_size=batch_size, resize=True)[0]
