@@ -116,40 +116,40 @@ class Evaluator:
         print(f'{fid_score=}')
 
         # compute inception score (IS)
-        i_score = self._compute_inception_score()
-        print(f'Inception score: {i_score}')
+        # i_score = self._compute_inception_score()
+        # print(f'Inception score: {i_score}')
 
         # compute Chamfer distance
-        chamfer_dist = self._chamfer_distance()
-        print(f'{chamfer_dist=}')
+        # chamfer_dist = self._chamfer_distance()
+        # print(f'{chamfer_dist=}')
 
         # compute SSL FID score
-        ssl_fid = self._compute_ssl_fid()
-        print(f'{ssl_fid=}')
+        # ssl_fid = self._compute_ssl_fid()
+        # print(f'{ssl_fid=}')
 
         # compute SSL PPL score
-        ssl_ppl = self._compute_ppl('simclr')
-        print(f'{ssl_ppl=}')
+        # ssl_ppl = self._compute_ppl('simclr')
+        # print(f'{ssl_ppl=}')
 
         # compute VGG PPL score
-        vgg_ppl = self._compute_ppl('vgg')
-        print(f'{vgg_ppl=}')
+        # vgg_ppl = self._compute_ppl('vgg')
+        # print(f'{vgg_ppl=}')
 
         # compute KID Inception
-        kid_inception = self._compute_kid('inception')
-        print(f'{kid_inception=}')
+        # kid_inception = self._compute_kid('inception')
+        # print(f'{kid_inception=}')
 
         # compute KID SSL
-        kid_ssl = self._compute_kid('simclr')
-        print(f'{kid_ssl=}')
+        # kid_ssl = self._compute_kid('simclr')
+        # print(f'{kid_ssl=}')
 
         # geometric distance
-        geom_dist = self._compute_geometric_distance()
-        print(f'{geom_dist=}')
+        # geom_dist = self._compute_geometric_distance()
+        # print(f'{geom_dist=}')
 
         # attribute control accuracy
-        attr_control_acc = self._attribute_control_accuracy(True)
-        pprint(f'{attr_control_acc=}')
+        # attr_control_acc = self._attribute_control_accuracy(True)
+        # pprint(f'{attr_control_acc=}')
 
     def _get_dl(self) -> DataLoader:
         """Creates infinite dataloader from valid and test sets of images
@@ -551,7 +551,6 @@ class Evaluator:
         """
 
         # load dataset
-        n_samples = 50_000
         path = self._config['dataset']['path']
         anno = self._config['dataset']['anno']
 
@@ -560,12 +559,12 @@ class Evaluator:
 
         # updated version of MakeDataLoader is used, where size of the image can be changes
         # and custom paths to data and annotations can be passed directly
-        make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=True)
-        ds_valid = make_dl.dataset_valid
+        make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=False)
         ds_test = make_dl.dataset_test
-        ds = ConcatDataset([ds_valid, ds_test])
+        ds_valid = make_dl.dataset_valid
+        n_samples = len(ds_test)
 
-        fid_func = get_fid_fn(ds, self._device, n_samples)
+        fid_func = get_fid_fn(ds_test, ds_valid, self._device, n_samples)
 
         with torch.no_grad():
             fid_score = fid_func(self._generator)

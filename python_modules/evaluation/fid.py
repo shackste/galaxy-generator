@@ -1,4 +1,5 @@
 # adapted from https://github.com/rosinality/stylegan2-pytorch/blob/master/fid.py
+from typing import Callable
 from functools import partial
 
 import numpy as np
@@ -123,7 +124,7 @@ def compute_fid(gen_mean, gen_cov, ref_mean, ref_cov, eps=1e-6):
 def fid_generator(generator: nn.Module, dataset: Dataset,
                   ref_mean: float, ref_cov: float,
                   inception: nn.Module, device,
-                  num_samples: int = 50_000, batch_size: int = 128):
+                  num_samples: int = 50_000, batch_size: int = 128) -> float:
 
     """Computes FID for given generator. Dataset is used to sample labels fro
 
@@ -174,13 +175,29 @@ def get_fid_between_datasets(dataset_a: Dataset,
     return compute_fid(mean_a, cov_a, mean_b, cov_b)
 
 
-def get_fid_fn(dataset, device,
+def get_fid_fn(dataset_features: Dataset,
+               dataset_labels: Dataset,
+               device,
                num_samples: int = 50_000,
                batch_size: int = 128,
-               n_workers: int = 8):
+               n_workers: int = 8) -> Callable:
+    """Creates function for FID calculation
+
+    Args:
+        dataset_features: dataset with images to compute features
+        dataset_labels: dataset to sample images from
+        device:
+        num_samples: number of samples to generate
+        batch_size: batch size to use, when generating images
+        n_workers: number of workers in dataloader
+
+    Returns:
+        Callable: function to compute FID
+    """
+
     inception = load_patched_inception_v3().eval().to(device)
 
-    loader = DataLoader(dataset, batch_size=batch_size,
+    loader = DataLoader(dataset_features, batch_size=batch_size,
                         shuffle=False,
                         drop_last=False,
                         num_workers=n_workers)
@@ -192,7 +209,7 @@ def get_fid_fn(dataset, device,
 
     return partial(
         fid_generator,
-        dataset=dataset,
+        dataset=dataset_labels,
         ref_mean=ref_mean,
         ref_cov=ref_cov,
         inception=inception,
