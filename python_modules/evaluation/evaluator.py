@@ -120,12 +120,12 @@ class Evaluator:
         # print(f'Inception score: {i_score}')
 
         # compute Chamfer distance
-        chamfer_dist = self._chamfer_distance()
-        print(f'{chamfer_dist=}')
+        # chamfer_dist = self._chamfer_distance()
+        # print(f'{chamfer_dist=}')
 
         # compute SSL FID score
-        # ssl_fid = self._compute_ssl_fid()
-        # print(f'{ssl_fid=}')
+        ssl_fid = self._compute_ssl_fid()
+        print(f'{ssl_fid=}')
 
         # compute SSL PPL score
         # ssl_ppl = self._compute_ppl('simclr')
@@ -418,18 +418,25 @@ class Evaluator:
         Returns:
             float: FID
         """
-        n_samples = 50_000
-        bs = self._config['batch_size']
-        n_batches = int(n_samples / bs) + 1
 
-        dl = self._get_dl()
+        bs = self._config['batch_size']
+
+        path = self._config['dataset']['path']
+        anno = self._config['dataset']['anno']
+        size = self._config['dataset']['size']
+
+        make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=False)
+        dl_valid = make_dl.get_data_loader_valid(bs)
+        dl_test = make_dl.get_data_loader_test(bs)
 
         # compute activations
         activations_real = []
         activations_fake = []
 
-        for _ in trange(n_batches):
-            img, lbl = next(dl)
+        for batch_val, batch_test in zip(dl_valid, dl_test):
+            img, _ = batch_test
+            _, lbl = batch_val
+
             img = img.to(self._device)
             img = (img - 0.5) / 0.5
             lbl = lbl.to(self._device)
@@ -529,7 +536,7 @@ class Evaluator:
         anno = self._config['dataset']['anno']
         size = self._config['dataset']['size']
 
-        make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=True)
+        make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=False)
         ds = make_dl.dataset_valid
         n_samples = len(ds)
 
