@@ -112,16 +112,16 @@ class Evaluator:
 
     def evaluate(self):
         # compute FID score
-        fid_score = self._compute_fid_score()
-        print(f'{fid_score=}')
+        # fid_score = self._compute_fid_score()
+        # print(f'{fid_score=}')
 
         # compute inception score (IS)
         # i_score = self._compute_inception_score()
         # print(f'Inception score: {i_score}')
 
         # compute Chamfer distance
-        # chamfer_dist = self._chamfer_distance()
-        # print(f'{chamfer_dist=}')
+        chamfer_dist = self._chamfer_distance()
+        print(f'{chamfer_dist=}')
 
         # compute SSL FID score
         # ssl_fid = self._compute_ssl_fid()
@@ -464,26 +464,23 @@ class Evaluator:
             float: Chamfer distance
         """
 
-        n_samples = 50_000
         bs = self._config['batch_size']
-        n_workers = self._config['n_workers']
-        n_batches = int(n_samples / bs) + 1
 
         path = self._config['dataset']['path']
         anno = self._config['dataset']['anno']
         size = self._config['dataset']['size']
 
-        make_dl = MakeDataLoader(path, anno, size, N_sample=-1)
-        ds_val = make_dl.dataset_valid
-        ds_test = make_dl.dataset_test
-        ds = ConcatDataset([ds_val, ds_test])
-
-        dl = infinite_loader(DataLoader(ds, bs, True, num_workers=n_workers))
+        make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=True)
+        dl_valid = make_dl.get_data_loader_valid(bs)
+        dl_test = make_dl.get_data_loader_test(bs)
 
         embeddings_real = []
         embeddings_gen = []
-        for _ in trange(n_batches):
-            img, lbl = next(dl)
+
+        for batch_val, batch_test in zip(dl_valid, dl_test):
+            img, _ = batch_test
+            _, lbl = batch_val
+
             img = img.to(self._device)
             img = (img - 0.5) / 0.5  # renormalize
 
@@ -525,7 +522,6 @@ class Evaluator:
             float: inception score (IS)
         """
 
-        n_samples = 50_000
         batch_size = self._config['batch_size']
 
         # load dataset
@@ -534,9 +530,8 @@ class Evaluator:
         size = self._config['dataset']['size']
 
         make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=True)
-        ds_valid = make_dl.dataset_valid
-        ds_test = make_dl.dataset_test
-        ds = ConcatDataset([ds_valid, ds_test])
+        ds = make_dl.dataset_valid
+        n_samples = len(ds)
 
         dataset = GANDataset(self._generator, ds, self._device, n_samples)
         score = inception_score(dataset, batch_size=batch_size, resize=True)[0]
