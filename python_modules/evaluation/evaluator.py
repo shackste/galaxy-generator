@@ -13,7 +13,8 @@ from torch.utils.data import DataLoader, ConcatDataset
 from chamferdist import ChamferDistance
 from geomloss import SamplesLoss
 
-from python_modules.big.BigGAN2 import Generator
+from python_modules.big.BigGAN2 import Generator as BigGAN2Generator
+from python_modules.evaluation.conditional_autoencoder import ConditionalDecoder
 from python_modules.evaluation.resnet_simclr import ResNetSimCLR
 from python_modules.evaluation.classifier import GalaxyZooClassifier
 from python_modules.evaluation.autoencoder import Encoder
@@ -93,7 +94,7 @@ def slerp(a, b, t):
 
 
 class Evaluator:
-    """Class aimed at evaluation of the trained model"""
+    """Class aimed at evaluation of the trained BigGAN/CVAE model"""
 
     def __init__(self, config_path: str):
         self._config = get_config(config_path)
@@ -644,7 +645,17 @@ class Evaluator:
         # load generator
         path_model = self._config['model_path']
         generator_ckpt = torch.load(path_model)
-        generator = Generator().eval().to(self._device)
+
+        generator_type = self._config['generator']['type']
+
+        if generator_type not in ['biggan', 'cvae']:
+            raise ValueError('Unsupported decoder type')
+
+        if generator_type == 'biggan':
+            generator = BigGAN2Generator().eval().to(self._device)
+        else:
+            generator = ConditionalDecoder().eval().to(self._device)
+
         generator.load_state_dict(generator_ckpt)
 
         # load encoder
