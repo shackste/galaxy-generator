@@ -16,9 +16,16 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def plot_corner(*data, **kwargs):
+    """ corner plot of data array (N_features, N_samples)
+
+     Returns
+     -------
+     fig : matplotlib figure containing the corner plot
+           to plot several datasets in on figure, pass kwarg fig=fig
+     """
     d = np.array(*data).T
     print(d.shape)
-    corner(d, **kwargs)
+    return corner(d, **kwargs)
 
 def plot_corner_measures_group(group: str, measures: Measures, **kwargs):
     """ create corner plot of group of measures
@@ -31,10 +38,15 @@ def plot_corner_measures_group(group: str, measures: Measures, **kwargs):
         (keys of measures_groups)
     measures: dict
         full dict containing all measures
+
+     Returns
+     -------
+     fig : matplotlib figure containing the corner plot
+           to plot several datasets in on figure, pass kwarg fig=fig
     """
     data = measures.group(group)
     labels = data.keys
-    plot_corner(data.numpy(), labels=labels, **kwargs)
+    return plot_corner(data.numpy(), labels=labels, **kwargs)
 
 
 def compute_distance_point_clouds_chamfer(
