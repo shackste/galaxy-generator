@@ -129,7 +129,7 @@ def evaluate_generator(dataloader, generator, plot=False, name=None, plot_path="
         target += measures_target
         source += measures_generated
 
-        if test and i > 10:
+        if test: # and i > 2:
             break
 
     if test:
@@ -143,9 +143,11 @@ def evaluate_generator(dataloader, generator, plot=False, name=None, plot_path="
     for group in measures.measures_groups.keys():
         distances[group] = compute_distance_measures_group(group, source, target)
         if plot:
+            print(group)
+            if group == "ellipticity": # ellipticity is a single measure, corner plot is useless
+                continue
             fig = None
             fig = plot_corner_measures_group(group, source, color="b", fig=fig, label_kwargs={"fontsize":16})
-            fig = None
             fig = plot_corner_measures_group(group, target, fig=fig, color="r")
             fig.suptitle(name, fontsize=20)
             blue_line = mlines.Line2D([], [], color='blue', label='source')

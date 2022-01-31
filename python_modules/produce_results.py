@@ -13,8 +13,8 @@ from big.BigGAN2 import Generator
 ## results to be produced
 
 plot_sample = False
-compute_morphology = False
-compute_cluster_measures = True
+compute_morphology = True
+compute_cluster_measures = False
 
 
 ## load remaining models
