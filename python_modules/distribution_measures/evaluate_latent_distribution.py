@@ -52,11 +52,11 @@ def evaluate_latent_distribution(models: dict, data_loader_test: DataLoader, dat
     results_clusters = {
         "histograms": distribution_evaluation.histograms,
         "errors": distribution_evaluation.get_errors(),
-        "distances" : distribution_evaluation.get_distances(),
+        "distances" : distribution_evaluation.get_mean_distance(),
     }
     return results_clusters, results_wasserstein
 
-
+@torch.no_grad()
 def get_latent(dataloader, # iterable generator that provides a tuple (images, dummy).
                rescale: bool = True # if True: rescale image from (0,-1) to (-1,1)
                ):
@@ -71,12 +71,14 @@ def get_latent(dataloader, # iterable generator that provides a tuple (images, d
     return np.array(latent)
 
 
+@torch.no_grad()
 def image_generator(model, # pytorch generator model that takes latent vector and label vector as input
                     dataloader: DataLoader, # dataloader to provide labels for the predicted distribution
                     ):
     for _, labels in tqdm(dataloader, desc=f"generate images {type(model).__name__}"):
-        latent = torch.randn(data_loader_valid.batch_size, model.z_dim, device="cuda")
-        images = model(latent, labels.cuda())
+        latent = torch.randn(dataloader.batch_size, model.dim_z, device="cuda")
+        labels = labels.cuda()
+        images = model(latent, labels)
         yield images, labels
 
 

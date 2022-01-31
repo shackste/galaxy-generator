@@ -27,6 +27,8 @@ measures_of_interest = [m
                         for measures in measures_groups.values()
                         for m in measures]
 
+measures_groups["all"] = measures_of_interest
+
 
 def get_morphology_measures(image: torch.Tensor,
                             gain: float = 10000.0, # assume average of 10,000 electrons per pixel
@@ -36,7 +38,7 @@ def get_morphology_measures(image: torch.Tensor,
     if len(image.shape) == 4:
         image = image[0]
     image = image.transpose(0,2)
-    image = image.numpy()
+    image = image.detach().cpu().numpy()
     image_bw = RGB2BW(image)
     segmap = get_segmentation_map(image_bw)
     with ExitStack() as stack:
@@ -89,7 +91,8 @@ class Measures:
 
     def items(self):
         """ mimic behavior of dict"""
-        return ((key, getattr(self, key)) for key in self.keys)
+        for key in self.keys:
+            yield key, getattr(self, key)
 
     def measures(self, keys):
         """ return a subset of Measures """

@@ -31,7 +31,7 @@ class NeuralNetwork(torch.nn.Module):
         
     def get_total_number_parameters(self) -> float:
         """ return total number of parameters """
-        return sum([p.numel() for p in classifier.parameters()])
+        return sum([p.numel() for p in self.parameters()])
 
     def zero_grad(self):
         """ faster implementation of zero_grad """
