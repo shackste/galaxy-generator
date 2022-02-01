@@ -45,7 +45,7 @@ def evaluate_latent_distribution(models: dict, data_loader_test: DataLoader, dat
         generator.load()
         generator.eval()
         data_generated = get_latent(image_generator(generator, data_loader_valid))
-        generator = 0 # free memory
+        del generator
         distribution_evaluation.add(name, data_generated)
         results_wasserstein[name] = wasser(data_generated, data_reference)
     distribution_evaluation.process(True)

@@ -72,4 +72,3 @@ def write_generated_galaxy_images_iteration(*, iteration: int = None, images: to
             k += 1
     flat_image = (flat_image*255).astype("uint8")
     write_RGB_image(image=flat_image, filename=f"{file_prefix}_iter{iteration}.png")
-

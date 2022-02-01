@@ -93,8 +93,44 @@ def compute_distance_measures_group(
         measures_source.group(group).torch(),
         measures_target.group(group).torch())
 
+def get_measures_dataloader(dataloader) -> measures.Measures:
+    """ get morphology measures for images in dataloader """
+    data = measures.Measures()
+    for images, _ in dataloader:
+        data += measures.get_morphology_measures_set(images)
+    return data
+
 @torch.no_grad()
-def evaluate_generator(dataloader, generator, plot=False, name=None, plot_path="~/Pictures/", test=False):
+def get_measures_generator(generator, dataloader) -> measures.Measures:
+    data = measures.Measures()
+    for _, labels in tqdm(dataloader, desc="get morphology measures"):
+        latent = torch.randn(labels.shape[0], generator.dim_z, device="cuda")
+        labels = labels.cuda()
+        images = generator(latent, labels)
+        data += measures.get_morphology_measures_set(images.cpu())
+    return data
+
+
+def evaluate_measures(target: measures.Measures, data: measures.Measures, plot=False, name=None, plot_path="~/Pictures/") -> dict:
+    """ calculate distance between groups of point clouds """
+    distances = {}
+    for group in measures.measures_groups.keys():
+        distances[group] = compute_distance_measures_group(group, data, target)
+        if plot and not group == "ellipticity": # ellipticity is a single measure, corner plot is useless
+            fig = None
+            fig = plot_corner_measures_group(group, data, color="b", fig=fig, label_kwargs={"fontsize":16})
+            fig = plot_corner_measures_group(group, target, fig=fig, color="r")
+            fig.suptitle(name, fontsize=20)
+            blue_line = mlines.Line2D([], [], color='blue', label='source')
+            red_line = mlines.Line2D([], [], color='red', label='target')
+            plt.legend(handles=[blue_line, red_line], bbox_to_anchor=(0., 1.0, 1., .0), loc=4, fontsize=16)
+            plt.savefig(f"{plot_path}measures_{group}_{name}.png")
+    distances["total"] = compute_distance_point_clouds(data.torch(), target.torch())
+    return distances
+
+
+@torch.no_grad()
+def evaluate_generator(dataloader, generator, plot=False, name=None, plot_path="~/Pictures/", test=False, target_measures: measures.Measures = None, clean: dict = {}):
     """ evaluate galaxy image generator by computing the distance between
         morphology measures obtained from real images and
         morphology measures obtained from images generated from same labels.
@@ -109,6 +145,13 @@ def evaluate_generator(dataloader, generator, plot=False, name=None, plot_path="
     plot: boolean
             if True: plot corner plots for all groups
     name : identifier of the generator used in the filename and title
+    test : boolean
+            if True: break after one batch for code testing
+    target_measures : measures.Measures
+            contains measures_target obtained in previous runs
+    clean : dict, e. g. {"deviation":(0,1)}
+            lists minimum and maximum range for certain measures.
+            data points exceeding this limit will be dropped.
 
     Output
     ------
@@ -116,17 +159,20 @@ def evaluate_generator(dataloader, generator, plot=False, name=None, plot_path="
             (chamfer) distance between point clouds of morphological measures for
             the real dataset and the generated counterparts
             for all groups in measures.measures_groups
+    measures_target : np.array
+            contains the measures for target which can be passed to kwarg target_measures to save computiation time in future runs
     """
     # collect measures from dataset and generator
     target = measures.Measures()
     source = measures.Measures()
     for i, (images, labels) in tqdm(enumerate(dataloader), desc="get morphology measures"):
-        measures_target = measures.get_morphology_measures_set(images)
+        if not target_measures:
+            measures_target = measures.get_morphology_measures_set(images)
+            target += measures_target
         latent = torch.randn(len(images), generator.dim_z, device="cuda")
         labels = labels.cuda()
         images = generator(latent, labels)
         measures_generated = measures.get_morphology_measures_set(images)
-        target += measures_target
         source += measures_generated
 
         if test: # and i > 2:
@@ -137,6 +183,12 @@ def evaluate_generator(dataloader, generator, plot=False, name=None, plot_path="
             print("target", key, np.min(value), np.max(value))
         for key, value in source.items():
             print("source", key, np.min(value), np.max(value))
+
+    if target_measures:
+        target = target_measures.copy()
+    if clean:
+        source.clean_measures(clean)
+        target.clean_measures(clean)
 
     # calculate distance between groups of point clouds
     distances = {}
@@ -155,4 +207,4 @@ def evaluate_generator(dataloader, generator, plot=False, name=None, plot_path="
             plt.legend(handles=[blue_line, red_line], bbox_to_anchor=(0., 1.0, 1., .0), loc=4, fontsize=16)
             plt.savefig(f"{plot_path}measures_{group}_{name}.png")
     distances["total"] = compute_distance_point_clouds(source.torch(), target.torch())
-    return distances
+    return distances, measures_target

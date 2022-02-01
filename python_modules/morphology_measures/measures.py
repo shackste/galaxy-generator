@@ -76,6 +76,13 @@ def RGB2BW(image):
 
 class Measures:
     def __init__(self, measures=measures_of_interest):
+        """ Initialize a Measures object.
+
+        Parameters
+        ----------
+        measures : list of strings
+                names of measures contained in the object.
+        """
         self.keys = measures
         for measure in self.keys:
             setattr(self, measure, [])
@@ -88,6 +95,27 @@ class Measures:
             else:
                 value.append(addition)
         return self
+
+    def clean_measures(self, clean: dict = {}):
+        """ remove datapoints that exceed the limits defined in clean
+
+        Parameters
+        ----------
+        clean : dict, e. g. {"x":(0,1)}
+                lists minimum and maximum range for certain measures.
+                data points exceeding this limit will be dropped.
+         """
+        remove = []
+        outliers = []
+        for key, value in self.items():
+            if key in clean:
+                mini, maxi = clean[key]
+                outliers.extend([id for id, x in enumerate(value) if x < mini or x > maxi])
+        outliers = sorted(list(set(outliers)), reverse=True)
+        for key, value in self.items():
+            for o in outliers:
+                del value[o]
+        print(f"{len(outliers)} outliers removed.")
 
     def items(self):
         """ mimic behavior of dict"""
@@ -129,9 +157,9 @@ def get_morphology_measures_set_parallel(set: types.GeneratorType,
     """
     if N > 0:
         set = [next(set) for i in range(N)]
-    with Pool() as pool:
+#    with Pool() as pool:
 #        morphs = pool.map(get_morphology_measures, set)
-        morphs = map(get_morphology_measures, set)
+    morphs = map(get_morphology_measures, set)
     measures = Measures()
     for morph in morphs:
         measures += morph
