@@ -68,6 +68,7 @@ if plot_sample or compute_morphology:
         ## morphology measures, takes a while. For testing, use test=True
         if compute_morphology:
             generated_measures = get_measures_generator(model, data_loader_valid)
+            generated_measures.clean_measures(clean_morphology)
             distances = evaluate_measures(target_measures, generated_measures, plot=True, name=name, plot_path=folder_results)
 #            distances, measures_target = evaluate_generator(data_loader_test, model, name=name, plot=True, test=True, plot_path=folder_results, clean=clean_morphology)
 #            pprint(distances)
