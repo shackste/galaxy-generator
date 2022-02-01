@@ -28,7 +28,10 @@ models = {
 }
 
 clean_morphology = {
-    "deviation": (0, 999999)
+    "deviation": (0, 999999),
+    "asymmetry": (-1,1),
+    "smoothness": (-0.5,1)
+
 }
 
 batch_size = 16
@@ -45,10 +48,12 @@ for images, labels in data_loader_test:
 if compute_morphology:
     target_measures = get_measures_dataloader(data_loader_test)
     target_measures.clean_measures(clean_morphology)
-    baseline_measures = get_measures_dataloader(data_loader_test)
-    baseline_measures.clean_measures(clean_morphology)
-    distances = evaluate_measures(target_measures, baseline_measures, plot=True, name="baseline", plot_path=folder_results)
-    pprint(distances)
+    if True:
+        baseline_measures = get_measures_dataloader(data_loader_test)
+        baseline_measures.clean_measures(clean_morphology)
+        distances = evaluate_measures(target_measures, baseline_measures, plot=True, name="baseline", plot_path=folder_results)
+        pprint(distances)
+
 
 if plot_sample or compute_morphology:
     if plot_sample:
@@ -70,6 +75,7 @@ if plot_sample or compute_morphology:
             generated_measures = get_measures_generator(model, data_loader_valid)
             generated_measures.clean_measures(clean_morphology)
             distances = evaluate_measures(target_measures, generated_measures, plot=True, name=name, plot_path=folder_results)
+            pprint(distances)
 #            distances, measures_target = evaluate_generator(data_loader_test, model, name=name, plot=True, test=True, plot_path=folder_results, clean=clean_morphology)
 #            pprint(distances)
 
