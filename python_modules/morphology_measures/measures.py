@@ -157,9 +157,9 @@ def get_morphology_measures_set_parallel(set: types.GeneratorType,
     """
     if N > 0:
         set = [next(set) for i in range(N)]
-#    with Pool() as pool:
-#        morphs = pool.map(get_morphology_measures, set)
-    morphs = map(get_morphology_measures, set)
+    with Pool() as pool:
+        morphs = pool.map(get_morphology_measures, set)
+#    morphs = map(get_morphology_measures, set)
     measures = Measures()
     for morph in morphs:
         measures += morph
