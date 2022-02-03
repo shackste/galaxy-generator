@@ -9,7 +9,7 @@ dependencies:
   - pillow=8.4.0=py38h5aabda8_0
   - pip=21.2.4=py38h06a4308_0
   - python=3.8.12=h12debd9_0
-  - torchvision=0.7.0=py38_cu102
+  - torchvision=0.11.3=py38_cu102
   - pip:
     - chamferdist==1.0.0
     - geomloss==0.2.4

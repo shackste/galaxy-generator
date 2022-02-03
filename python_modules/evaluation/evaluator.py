@@ -16,7 +16,7 @@ from geomloss import SamplesLoss
 from python_modules.big.BigGAN2 import Generator as BigGAN2Generator
 from python_modules.evaluation.conditional_autoencoder import ConditionalDecoder
 from python_modules.evaluation.resnet_simclr import ResNetSimCLR
-from python_modules.evaluation.classifier import GalaxyZooClassifier
+from python_modules.image_classifier import ImageClassifier
 from python_modules.evaluation.autoencoder import Encoder
 from python_modules.evaluation.fid import get_fid_fn, load_patched_inception_v3
 from python_modules.evaluation.inception_score import inception_score
@@ -224,9 +224,9 @@ class Evaluator:
 
             with torch.no_grad():
                 img = self._generator(latent, label)
-                img = (img - 0.5) / 0.5  # renormalize
-                h, _ = self._encoder(img)
-                pred = self._classifier(h)
+                # img = (img - 0.5) / 0.5  # renormalize
+                # h, _ = self._encoder(img)
+                pred = self._classifier(img)
 
             diff = (label - pred) ** 2
             diffs.extend(diff.detach().cpu().numpy())
@@ -670,13 +670,14 @@ class Evaluator:
         encoder = encoder.to(self._device).eval()
 
         # load classifier
-        n_lbls = self._config['dataset']['n_out']  # shape of labels
+        # n_lbls = self._config['dataset']['n_out']  # shape of labels
         classifier_path = self._config['classifier']['path']
-        n_feat = self._config['classifier']['n_features']
+        # n_feat = self._config['classifier']['n_features']
 
-        classifier = GalaxyZooClassifier(n_feat, n_lbls)
+        classifier = ImageClassifier()
         ckpt = torch.load(classifier_path, map_location='cpu')
         classifier.load_state_dict(ckpt)
         classifier = classifier.to(self._device).eval()
+        classifier.use_label_hierarchy()
 
         return generator, encoder, classifier
