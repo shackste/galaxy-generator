@@ -2,7 +2,7 @@ from typing import Dict
 from pathlib import Path
 from pprint import pprint
 
-from tqdm import trange
+from tqdm import trange, tqdm
 import numpy as np
 from sklearn.manifold import TSNE
 from scipy import linalg
@@ -207,25 +207,26 @@ class Evaluator:
             Dict: attribute control accuracy for each label
         """
 
-        n_samples = 50_000
+        # load dataset
         bs = self._config['batch_size']
-        n_batches = int(n_samples / bs) + 1
+
+        path = self._config['dataset']['path']
+        anno = self._config['dataset']['anno']
+        size = self._config['dataset']['size']
+        make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=True)
+        dl_valid = make_dl.get_data_loader_valid(batch_size=bs)
 
         n_out = self._config['dataset']['n_out']
         diffs = []
         labels = []
 
-        dl = self._get_dl()
-
-        for _ in trange(n_batches):
-            _, label = next(dl)
+        for batch in tqdm(dl_valid):
+            img, label = batch
             label = label.to(self._device)
             latent = torch.randn((bs, self._generator.dim_z)).to(self._device)
 
             with torch.no_grad():
                 img = self._generator(latent, label)
-                # img = (img - 0.5) / 0.5  # renormalize
-                # h, _ = self._encoder(img)
                 pred = self._classifier(img)
 
             diff = (label - pred) ** 2
@@ -607,7 +608,7 @@ class Evaluator:
 
         make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=False)
         ds = make_dl.dataset_valid
-        n_samples = 50_000
+        n_samples = len(ds)
 
         dataset = GANDataset(self._generator, ds, self._device, n_samples)
         score = inception_score(dataset, batch_size=batch_size, resize=True)[0]
