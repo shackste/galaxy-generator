@@ -10,6 +10,7 @@ from corner import corner
 from chamferdist import ChamferDistance
 
 from . import measures
+from . import wasserstein
 
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -71,7 +72,26 @@ def compute_distance_point_clouds_chamfer(
     dist = chamfer_dist(points_source.to(device), points_target.to(device))
     return dist.item()
 
-compute_distance_point_clouds = compute_distance_point_clouds_chamfer
+def compute_distance_point_clouds_wasserstein(
+        points_source: torch.Tensor,
+        points_target: torch.Tensor):
+    """ compute the chamfer distance from source_points to target_points
+
+    Parameter
+    ---------
+    source_points: torch.Tensor
+        3D tensor of shape (N_batches, N_points, N_dimensions)
+        contains points supposedly close to target points
+    target_points: torch.Tensor
+        3D tensor of shape (N_batches, N_points, N_dimensions)
+        contains points from ground truth
+
+    """
+    print("shape", points_source.shape, points_target.shape)
+    dist = wasserstein.wasserstein(points_source.to(device), points_target.to(device))
+    return dist.item()
+
+compute_distance_point_clouds = compute_distance_point_clouds_wasserstein
 
 
 def compute_distance_measures_group(
