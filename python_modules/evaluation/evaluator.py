@@ -187,7 +187,7 @@ class Evaluator:
         path = self._config['dataset']['path']
         anno = self._config['dataset']['anno']
         size = self._config['dataset']['size']
-        make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=True)
+        make_dl = MakeDataLoader(path, anno, size, augmented=True)
         ds_valid = make_dl.dataset_valid
         ds_test = make_dl.dataset_test
         ds = ConcatDataset([ds_valid, ds_test])
@@ -213,7 +213,7 @@ class Evaluator:
         path = self._config['dataset']['path']
         anno = self._config['dataset']['anno']
         size = self._config['dataset']['size']
-        make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=True)
+        make_dl = MakeDataLoader(path, anno, size, augmented=True)
         dl_valid = make_dl.get_data_loader_valid(batch_size=bs)
 
         n_out = self._config['dataset']['n_out']
@@ -286,7 +286,7 @@ class Evaluator:
         anno = self._config['dataset']['anno']
         size = self._config['dataset']['size']
 
-        make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=True)
+        make_dl = MakeDataLoader(path, anno, size, augmented=True)
         dl_valid = make_dl.get_data_loader_valid(bs)
         dl_test = make_dl.get_data_loader_test(bs)
 
@@ -482,7 +482,7 @@ class Evaluator:
         anno = self._config['dataset']['anno']
         size = self._config['dataset']['size']
 
-        make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=False)
+        make_dl = MakeDataLoader(path, anno, size, augmented=False)
         dl_valid = make_dl.get_data_loader_valid(bs)
         dl_test = make_dl.get_data_loader_test(bs)
 
@@ -496,6 +496,7 @@ class Evaluator:
 
             img = img.to(self._device)
             img = (img - 0.5) / 0.5
+
             lbl = lbl.to(self._device)
             latent = torch.randn((bs, self._generator.dim_z)).to(self._device)
 
@@ -547,7 +548,7 @@ class Evaluator:
         anno = self._config['dataset']['anno']
         size = self._config['dataset']['size']
 
-        make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=True)
+        make_dl = MakeDataLoader(path, anno, size, augmented=True)
         dl_valid = make_dl.get_data_loader_valid(bs)
         dl_test = make_dl.get_data_loader_test(bs)
 
@@ -606,7 +607,7 @@ class Evaluator:
         anno = self._config['dataset']['anno']
         size = self._config['dataset']['size']
 
-        make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=False)
+        make_dl = MakeDataLoader(path, anno, size, augmented=False)
         ds = make_dl.dataset_valid
         n_samples = len(ds)
 
@@ -631,7 +632,7 @@ class Evaluator:
 
         # updated version of MakeDataLoader is used, where size of the image can be changes
         # and custom paths to data and annotations can be passed directly
-        make_dl = MakeDataLoader(path, anno, size, N_sample=-1, augmented=False)
+        make_dl = MakeDataLoader(path, anno, size, augmented=False)
         ds_test = make_dl.dataset_test
         ds_valid = make_dl.dataset_valid
         n_samples = len(ds_test)

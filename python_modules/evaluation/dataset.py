@@ -11,7 +11,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, Subset, DataLoader
 from torchvision import transforms
 
-from .utils import PathOrStr, get_device
+from .utils import PathOrStr
 
 
 def get_labels_train(file_galaxy_labels: PathOrStr) -> torch.Tensor:
@@ -69,7 +69,6 @@ class MakeDataLoader:
                  image_size: int,
                  test_size: float = 0.1,
                  random_state=2,
-                 N_sample=-1,
                  augmented: bool = True):
         self.dataset = GalaxyZooDataset(folder_images, file_labels, image_size)
         if not augmented:
@@ -78,12 +77,10 @@ class MakeDataLoader:
                                                random_state=random_state)
         valid_idx, test_idx = train_test_split(list(range(len(test_idx))), test_size=0.5, random_state=random_state + 1)
 
-        indices = torch.randperm(len(train_idx))[:N_sample]
-        self.dataset_train = Subset(self.dataset, np.array(train_idx)[indices])
+        self.dataset_train = Subset(self.dataset, np.array(train_idx))
         self.dataset_valid = Subset(self.dataset, valid_idx)
         self.dataset_test = Subset(self.dataset, test_idx)
         self.dataset_test.test_data = True
-        self.device = get_device()
 
     def get_data_loader_full(self,
                              batch_size: int = 64,
