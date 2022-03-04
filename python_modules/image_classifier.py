@@ -41,6 +41,19 @@ class ClassifierBase(NeuralNetwork):
         self.consider_groups(*class_group_layers[layer])
 
 class ImageClassifier(ClassifierBase):
+    """ model for morphological classification of galaxy images
+
+    Usage
+    -----
+
+    to use pretrained model, do
+    >>> classifier = ImageClassifier()
+    >>> classifier.load()
+    >>> classifier.eval()
+    >>> classifier.use_label_hierarchy()
+    >>> labels = classifier(images)
+
+    """
     def __init__(self, 
                  seed=None,
                  optimizer=Adam, optimizer_kwargs = {},
@@ -163,8 +176,6 @@ class ImageClassifier(ClassifierBase):
         x = x.permute(1,0,2)
         x = x.reshape(batch_size, self.N_augmentations*self.N_conv_outputs)
         return x
-
-
 
     def train_step(self, images: torch.tensor, labels: torch.tensor) -> float:
         self.train()

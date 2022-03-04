@@ -59,7 +59,9 @@ def write_generated_galaxy_images_iteration(*, iteration: int = None, images: to
     assert type(iteration) is int, "provide iteration as integer"
     assert images is not None, "provide generated galaxy images"
     assert width*height == len(images), "width and height need to fit number of images, N = width*height"
-
+    images = images.detach().cpu()
+    if images.min() < 0: # images might be scaled (-1,1) or (0,1). plotting requires (0,1)
+        images = (images + 1)/2
     d = image_dim
 
     flat_image = np.empty((3, height*d, width*d))
@@ -70,4 +72,3 @@ def write_generated_galaxy_images_iteration(*, iteration: int = None, images: to
             k += 1
     flat_image = (flat_image*255).astype("uint8")
     write_RGB_image(image=flat_image, filename=f"{file_prefix}_iter{iteration}.png")
-
