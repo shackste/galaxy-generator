@@ -1,0 +1,25 @@
+batch_size: 32    # batch size to use, when running evaluation
+n_workers: 16     # number of workers to use in dataloader
+
+model_path: <>  # path to trained model
+
+generator:
+  type: cvae  # type of the generator to use. Choices: biggan, cvae
+
+encoder:                                   # SimCLR encoder parameters
+  path: ./models/galaxy_zoo_encoder.pth    # path to pretrained encoder model
+  base_model: resnet50                     # encoder base model. Default: resnet50
+  out_dim: 128                             # z-projection size. Default: 128
+
+dataset:            # dataset parameters
+  path: <>         # path to folder with images
+  anno: <>          # path to file with attribute annotations
+  size: 64          # size of the images. Default: 64
+  n_out: 37         # number of attributes for each image
+  n_channels: 3     # number of channels in image
+
+eval:
+  path_encoder: ./models/cVAE/parameter_state_dict_Encoder.pth  # path to pretrained autoencoder
+
+classifier:                                 # classifier parameters
+  path: ./models/parameter_state_dict_ImageClassifier.pth  # path to pretrained classifier model
