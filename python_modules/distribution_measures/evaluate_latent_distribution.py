@@ -44,7 +44,8 @@ def evaluate_latent_distribution(models: dict, data_loader_test: DataLoader, dat
         generator = Model().cuda()
         generator.load()
         generator.eval()
-        data_generated = get_latent(image_generator(generator, data_loader_valid))
+        print(name)
+        data_generated = get_latent(image_generator(generator, data_loader_valid), rescale=name != "cVAE")
         del generator
         distribution_evaluation.add(name, data_generated)
         results_wasserstein[name] = wasser(data_generated, data_reference)
