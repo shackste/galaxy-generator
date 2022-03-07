@@ -93,7 +93,10 @@ class MakeDataLoader:
         self.dataset_valid = Subset(self.dataset, np.array(valid_idx))
         self.dataset_test = Subset(self.dataset, np.array(test_idx))
         self.dataset_test.test_data = True
-        
+        self.dataset_train.test_data = True if not augmented else False
+        self.dataset_valid.test_data = True if not augmented else False
+        self.dataset.test_data = True if not augmented else False
+
     def get_data_loader_full(self, batch_size=64, shuffle=True, **kwargs) -> DataLoader:
         return DataLoader(self.dataset, batch_size=batch_size, shuffle=shuffle, drop_last=True, pin_memory=device.type=="gpu", **kwargs)
 

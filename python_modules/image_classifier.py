@@ -262,7 +262,7 @@ class ImageClassifier(ClassifierBase):
                 loss_, accs_, variance_ = self.evaluate_batch(images, labels)
                 loss += loss_
                 accs.update(accs_)
-                variance += varance_
+                variance += variance_
             loss /= N_test + 1
             variance /= N_test + 1
             for group in accs.keys():

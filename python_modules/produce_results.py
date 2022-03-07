@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 from pprint import pprint
 
@@ -14,15 +15,16 @@ from big.BigGAN2 import Generator
 ## results to be produced
 
 plot_sample = False
-compute_morphology = True
-compute_cluster_measures = False
+compute_morphology = False
+compute_cluster_measures = True
 
 
 ## load remaining models
 
 models = {
     "BigGAN": Generator,
-#    "cVAE" : ConditionalDecoder,
+    "cVAE" : ConditionalDecoder,
+
 #   "info-scc" : InfoSCCGenerator,
 #   "collapse" : CollapsedGenerator,
 }
@@ -36,9 +38,15 @@ clean_morphology = {
 
 batch_size = 16
 
-make_data_loader = MakeDataLoader()
-data_loader_test = make_data_loader.get_data_loader_test(batch_size=batch_size, shuffle=True)
-data_loader_valid = make_data_loader.get_data_loader_valid(batch_size=batch_size, shuffle=True)
+make_data_loader = MakeDataLoader(augmented=False)
+data_loader_test = make_data_loader.get_data_loader_test(batch_size=batch_size, shuffle=False)
+data_loader_valid = make_data_loader.get_data_loader_valid(batch_size=batch_size, shuffle=False)
+
+
+# force same results in every call
+np.random.seed(0)
+torch.manual_seed(0)
+torch.cuda.manual_seed(0)
 
 for images, labels in data_loader_test:
     break
@@ -49,14 +57,15 @@ if compute_morphology:
     target_measures = get_measures_dataloader(data_loader_test)
     target_measures.clean_measures(clean_morphology)
     if True:
-        baseline_measures = get_measures_dataloader(data_loader_test)
-        baseline_measures.clean_measures(clean_morphology)
-        distances = evaluate_measures(target_measures, baseline_measures, plot=True, name="baseline", plot_path=folder_results)
+        reference_measures = get_measures_dataloader(data_loader_test)
+        reference_measures.clean_measures(clean_morphology)
+        distances = evaluate_measures(target_measures, reference_measures, plot=True, name="reference", plot_path=folder_results)
         pprint(distances)
 
 
 if plot_sample or compute_morphology:
     if plot_sample:
+        pprint(labels)
         write_generated_galaxy_images_iteration(iteration=0, images=images, width=4, height=4, file_prefix="images_original")
     for name, Model in models.items():
         model = Model().cuda()
