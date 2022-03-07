@@ -17,15 +17,5 @@ folder_results = root + "results/"
 #folder_results  = "/scratch/snx3000/shackst/galaxy-generator/data/results/"
 
 
-
-print("\n!!!!!!!!!!\n")
-print(
-    f"{file_galaxy_images.split('/')[-1]}" +
-    f" and {file_galaxy_labels.split('/')[-1]}" +
-    f" must be placed in google drive under " +
-    f"{'/'.join(root.split('/')[3:])}"
-)
-print("the results will be placed there, too.\n")
-
 if not os.path.exists(folder_results):
     os.makedirs(folder_results, exist_ok=True)
