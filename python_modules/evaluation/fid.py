@@ -49,7 +49,8 @@ def extract_model_features(model: nn.Module,
                            dataset: Dataset,
                            device,
                            num_samples: int = 50_000,
-                           batch_size: int = 128) -> torch.Tensor:
+                           batch_size: int = 128,
+                           normalize: bool = True) -> torch.Tensor:
 
     """Extracts features from generated samples
 
@@ -60,6 +61,7 @@ def extract_model_features(model: nn.Module,
         device:
         num_samples: number of samples to generate
         batch_size: batch size to use, when generating
+        normalize: if True, images from [0, 1] will be normalized to [-1, 1]
 
     Returns:
         torch.Tensor: extracted features
@@ -81,8 +83,10 @@ def extract_model_features(model: nn.Module,
         latent = torch.randn(batch_size, latent_dim).to(device)
 
         batch = model(latent, labels).to(device)
-        # since images are [0, 1], renormalize
-        batch = (batch - 0.5) / 0.5
+
+        if normalize:
+            # since images are [0, 1], renormalize
+            batch = (batch - 0.5) / 0.5
 
         # Interpolate batch to match size
         if batch.shape[2] != 299 or batch.shape[3] != 299:
@@ -124,7 +128,8 @@ def compute_fid(gen_mean, gen_cov, ref_mean, ref_cov, eps=1e-6):
 def fid_generator(generator: nn.Module, dataset: Dataset,
                   ref_mean: float, ref_cov: float,
                   inception: nn.Module, device,
-                  num_samples: int = 50_000, batch_size: int = 128) -> float:
+                  num_samples: int = 50_000, batch_size: int = 128,
+                  normalize: bool = True) -> float:
 
     """Computes FID for given generator. Dataset is used to sample labels fro
 
@@ -137,6 +142,7 @@ def fid_generator(generator: nn.Module, dataset: Dataset,
         device:
         num_samples: number of samples to compute features from
         batch_size: batch size to use
+        normalize: if True, images will be normalized from [0, 1] to [-1, 1]
 
     Returns:
         float: FID value
@@ -147,7 +153,8 @@ def fid_generator(generator: nn.Module, dataset: Dataset,
                                       dataset=dataset,
                                       device=device,
                                       num_samples=num_samples,
-                                      batch_size=batch_size)
+                                      batch_size=batch_size,
+                                      normalize=normalize)
 
     gen_mean = np.mean(gen_feat, 0)
     gen_cov = np.cov(gen_feat, rowvar=False)
@@ -180,7 +187,8 @@ def get_fid_fn(dataset_features: Dataset,
                device,
                num_samples: int = 50_000,
                batch_size: int = 128,
-               n_workers: int = 8) -> Callable:
+               n_workers: int = 8,
+               normalize: bool = True) -> Callable:
     """Creates function for FID calculation
 
     Args:
@@ -190,6 +198,7 @@ def get_fid_fn(dataset_features: Dataset,
         num_samples: number of samples to generate
         batch_size: batch size to use, when generating images
         n_workers: number of workers in dataloader
+        normalize: if True, generated images will be normalized from [0, 1] to [-1, 1]
 
     Returns:
         Callable: function to compute FID
@@ -215,6 +224,7 @@ def get_fid_fn(dataset_features: Dataset,
         inception=inception,
         device=device,
         num_samples=num_samples,
+        normalize=normalize
     )
 
 
