@@ -24,7 +24,6 @@ compute_cluster_measures = True
 models = {
     "BigGAN": Generator,
     "cVAE" : ConditionalDecoder,
-
 #   "info-scc" : InfoSCCGenerator,
 #   "collapse" : CollapsedGenerator,
 }
@@ -57,7 +56,7 @@ if compute_morphology:
     target_measures = get_measures_dataloader(data_loader_test)
     target_measures.clean_measures(clean_morphology)
     if True:
-        reference_measures = get_measures_dataloader(data_loader_test)
+        reference_measures = get_measures_dataloader(data_loader_valid)
         reference_measures.clean_measures(clean_morphology)
         distances = evaluate_measures(target_measures, reference_measures, plot=True, name="reference", plot_path=folder_results)
         pprint(distances)
@@ -65,7 +64,6 @@ if compute_morphology:
 
 if plot_sample or compute_morphology:
     if plot_sample:
-        pprint(labels)
         write_generated_galaxy_images_iteration(iteration=0, images=images, width=4, height=4, file_prefix="images_original")
     for name, Model in models.items():
         model = Model().cuda()
