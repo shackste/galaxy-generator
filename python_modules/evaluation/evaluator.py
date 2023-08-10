@@ -207,6 +207,8 @@ class Evaluator:
             Dict: attribute control accuracy for each label
         """
 
+        gen_type = self._config['generator']['type']
+
         # load dataset
         bs = self._config['batch_size']
 
@@ -227,6 +229,10 @@ class Evaluator:
 
             with torch.no_grad():
                 img = self._generator(latent, label)
+
+                if gen_type == 'cvae':
+                    img = img / 2 + 0.5
+
                 pred = self._classifier(img)
 
             diff = (label - pred) ** 2
@@ -298,11 +304,16 @@ class Evaluator:
             img, _ = batch_test
             img = img.to(self._device)
             img = (img - 0.5) / 0.5  # renormalize image
+
             lbl = lbl.to(self._device)
             latent = torch.randn((bs, self._generator.dim_z)).to(self._device)
 
             with torch.no_grad():
                 img_gen = self._generator(latent, lbl)
+
+                if self._config['generator']['type'] == 'biggan':
+                    img_gen = (img_gen - 0.5) / 0.5
+
                 h, _ = encoder(img)
                 h_gen, _ = encoder(img_gen)
 
@@ -324,6 +335,8 @@ class Evaluator:
         Returns:
             float: KID score
         """
+
+        gen_type = self._config['generator']['type']
 
         if encoder_type not in ['simclr', 'inception', 'ae']:
             raise ValueError('Incorrect encoder')
@@ -360,13 +373,14 @@ class Evaluator:
             with torch.no_grad():
                 img_gen = self._generator(latent, lbl)
 
+                if gen_type == 'biggan':
+                    img_gen = (img_gen - 0.5) / 0.5
+
                 if encoder_type == 'inception':
                     if img.shape[2] != 299 or img.shape[3] != 299:
                         img = torch.nn.functional.interpolate(img, size=(299, 299), mode='bicubic')
 
                     img_gen = torch.nn.functional.interpolate(img_gen, size=(299, 299), mode='bicubic')
-                    img_gen = (img_gen - 0.5) / 0.5
-
                     h = encoder(img)[0].flatten(start_dim=1)
                     h_gen = encoder(img_gen)[0].flatten(start_dim=1)
                 else:
@@ -402,6 +416,8 @@ class Evaluator:
             float: perceptual path length (smaller better)
         """
 
+        gen_type = self._config['generator']['type']
+
         if encoder_type not in ['simclr', 'vgg', 'ae']:
             raise ValueError('Incorrect encoder')
 
@@ -436,7 +452,9 @@ class Evaluator:
 
             with torch.no_grad():
                 img = self._generator(torch.cat([zt0, zt1]), labels_cat)
-                img = (img - 0.5) / 0.5
+
+                if gen_type == 'biggan':
+                    img = (img - 0.5) / 0.5
 
                 if encoder_type in ['simclr', 'ae']:
                     h, _ = encoder(img)
@@ -465,6 +483,8 @@ class Evaluator:
         Returns:
             float: FID
         """
+
+        gen_type = self._config['generator']['type']
 
         if encoder_type not in ['simclr', 'ae']:
             raise ValueError('Incorrect encoder')
@@ -502,7 +522,9 @@ class Evaluator:
 
             with torch.no_grad():
                 img_gen = self._generator(latent, lbl)
-                img_gen = (img_gen - 0.5) / 0.5
+
+                if gen_type == 'biggan':
+                    img_gen = (img_gen - 0.5) / 0.5
 
                 h, _ = encoder(img)
                 h_gen, _ = encoder(img_gen)
@@ -531,6 +553,8 @@ class Evaluator:
         Returns:
             float: Chamfer distance
         """
+
+        gen_type = self._config['generator']['type']
 
         if encoder_type not in ['simclr', 'ae']:
             raise ValueError('Incorrect encoder')
@@ -569,7 +593,9 @@ class Evaluator:
 
             with torch.no_grad():
                 img_gen = self._generator(latent, lbl)
-                img_gen = (img_gen - 0.5) / 0.5  # renormalize
+
+                if gen_type == 'biggan':
+                    img_gen = (img_gen - 0.5) / 0.5  # renormalize
 
                 h, _ = encoder(img)
                 h_gen, _ = encoder(img_gen)
@@ -600,6 +626,8 @@ class Evaluator:
             float: inception score (IS)
         """
 
+        gen_type = self._config['generator']['type']
+
         batch_size = self._config['batch_size']
 
         # load dataset
@@ -611,7 +639,8 @@ class Evaluator:
         ds = make_dl.dataset_valid
         n_samples = len(ds)
 
-        dataset = GANDataset(self._generator, ds, self._device, n_samples)
+        dataset = GANDataset(self._generator, ds, self._device, n_samples,
+                             normalize=gen_type == 'biggan')
         score = inception_score(dataset, batch_size=batch_size, resize=True)[0]
         return score
 
@@ -622,6 +651,8 @@ class Evaluator:
         Returns:
             float: FID score
         """
+
+        gen_type = self._config['generator']['type']
 
         # load dataset
         path = self._config['dataset']['path']
@@ -637,7 +668,7 @@ class Evaluator:
         ds_valid = make_dl.dataset_valid
         n_samples = len(ds_test)
 
-        fid_func = get_fid_fn(ds_test, ds_valid, self._device, n_samples)
+        fid_func = get_fid_fn(ds_test, ds_valid, self._device, n_samples, normalize=gen_type == 'biggan')
 
         with torch.no_grad():
             fid_score = fid_func(self._generator)

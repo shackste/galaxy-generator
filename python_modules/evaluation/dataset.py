@@ -121,11 +121,13 @@ class GANDataset(Dataset):
                  model: nn.Module,
                  dataset: Dataset,
                  device,
-                 n: int):
+                 n: int,
+                 normalize: bool = True):
         self._model = model
         self._dataset = dataset
         self._device = device
         self._n = n
+        self._normalize = normalize
 
     def __len__(self) -> int:
         return self._n
@@ -137,5 +139,7 @@ class GANDataset(Dataset):
         label = label.unsqueeze(0).to(self._device)
         latent = torch.randn((1, self._model.dim_z)).to(self._device)
         img = self._model(latent, label).squeeze()
-        img = (img - 0.5) / 0.5  # renormalize image to be [0, 1]
+
+        if self._normalize:
+            img = (img - 0.5) / 0.5  # renormalize image to be [0, 1]
         return img
